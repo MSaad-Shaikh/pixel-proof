@@ -1,33 +1,20 @@
-# PixelProof - Educational Prototype
-# Single source of truth for dependencies (req.txt has been removed).
-# Install with: pip install -r requirements.txt
-#
-# Note: PaddlePaddle (paddlepaddle) must be installed BEFORE paddleocr.
-# On CPU-only machines use: pip install paddlepaddle
-# On CUDA machines use: pip install paddlepaddle-gpu
-
-# --- Core UI ---
+# PixelProof - Dependencies
 streamlit>=1.35.0
-
-# --- Computer Vision ---
-opencv-python>=4.9.0
+opencv-python-headless>=4.8.0
 Pillow>=10.0.0
-numpy>=1.24.0
+numpy>=1.24.0,<2.0.0
 scikit-image>=0.22.0
 
-# --- OCR & MRZ Reading ---
+# OCR & MRZ Reading
 easyocr>=1.7.2
-torch>=2.0.0                # required by EasyOCR; install CPU wheel if no GPU
-torchvision>=0.15.0         # required by EasyOCR
-paddleocr>=2.7.0            # optional fallback; may be unreliable on Python 3.13/Windows
-passporteye>=2.2.1          # optional; requires Tesseract OCR in PATH
+torch>=2.0.0
+torchvision>=0.15.0
+passporteye>=2.2.1
 
-# --- Biometric Verification ---
+# Biometric Verification
 deepface>=0.0.91
-tf-keras>=2.16.0            # required shim for DeepFace on TensorFlow >= 2.16
+tf-keras>=2.16.0
 
-# --- Text Fuzzy Matching ---
+# Text Matching & Display
 rapidfuzz>=3.6.0
-
-# --- Data display ---
 pandas>=2.0.0

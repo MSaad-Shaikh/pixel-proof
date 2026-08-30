@@ -26,6 +26,11 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
+# Prevent TensorFlow/CUDA from attempting GPU lookups or crashing on CPU cloud containers
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
 import numpy as np
 import streamlit as st
 from PIL import Image

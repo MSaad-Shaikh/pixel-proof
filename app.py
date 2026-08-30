@@ -443,12 +443,81 @@ def render_field_row(label: str, value: str, badge_html: Optional[str] = None) -
 
 
 # ---------------------------------------------------------------------------
+# Authentication Gate (Demo Login Interface)
+# ---------------------------------------------------------------------------
+DEMO_CREDENTIALS = {
+    "officer_demo": "pixelproof2026",
+    "admin": "admin123",
+    "demo": "demo",
+}
+
+if not st.session_state.get("authenticated", False):
+    st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
+    _, col_center, _ = st.columns([1, 2, 1])
+    
+    with col_center:
+        st.markdown(
+            """
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.8rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4); text-align: center; margin-bottom: 1.2rem;">
+                <div style="font-size: 2.2rem; margin-bottom: 0.3rem;">🛡️</div>
+                <div style="font-size: 1.4rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.02em;">PixelProof Portal</div>
+                <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.2rem;">Border Control & Forensic Verification Console</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        
+        with st.form("login_form"):
+            username = st.text_input("Officer Username / ID", placeholder="e.g. officer_demo")
+            password = st.text_input("Passcode", type="password", placeholder="Enter passcode")
+            submit_btn = st.form_submit_button("Log In to Workstation", type="primary", use_container_width=True)
+            
+            if submit_btn:
+                if username in DEMO_CREDENTIALS and DEMO_CREDENTIALS[username] == password:
+                    st.session_state["authenticated"] = True
+                    st.session_state["user"] = username
+                    st.rerun()
+                else:
+                    st.error("Invalid credentials. Please verify your officer username and passcode.")
+        
+        st.markdown(
+            """
+            <div style="background: #0f172a; border: 1px dashed #3b82f6; border-radius: 8px; padding: 0.9rem; margin-top: 1rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.82rem; font-weight: 600; color: #60a5fa; margin-bottom: 0.2rem;">
+                    💡 Hackathon Presentation Demo Account
+                </div>
+                <div style="font-size: 0.8rem; color: #cbd5e1;">
+                    <strong>User:</strong> <code>officer_demo</code> &nbsp;|&nbsp; <strong>Password:</strong> <code>pixelproof2026</code>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        
+        if st.button("⚡ 1-Click Demo Login (Instant Access)", use_container_width=True):
+            st.session_state["authenticated"] = True
+            st.session_state["user"] = "officer_demo"
+            st.rerun()
+            
+    st.stop()
+
+# ---------------------------------------------------------------------------
 # Sidebar: Input Panel
 # ---------------------------------------------------------------------------
 
 with st.sidebar:
     st.markdown("### 🛡️ PixelProof")
     st.caption("Automated Document Verification System")
+    
+    # Active Officer indicator & logout button
+    c_user, c_out = st.columns([3, 2])
+    with c_user:
+        st.caption(f"👤 `{st.session_state.get('user', 'officer_demo')}`")
+    with c_out:
+        if st.button("Log Out", key="logout_btn", use_container_width=True):
+            st.session_state["authenticated"] = False
+            st.session_state.pop("user", None)
+            st.rerun()
     st.markdown("---")
 
     st.markdown("**1. Document Upload**")

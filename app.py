@@ -569,20 +569,25 @@ if not run_btn:
                 return False
 
         dep_status = {
-            "EasyOCR (OCR Engine)":   _dep_check("easyocr"),
-            "PaddleOCR":              _dep_check("paddleocr"),
-            "PassportEye":            _dep_check("passporteye"),
-            "DeepFace / ArcFace":     deepface_ok,
-            "TensorFlow":             _dep_check("tensorflow"),
-            "OpenCV":                 _dep_check("cv2"),
-            "ELA Forensics":          True,
-            "MRZ Validator":          True,
-            "Risk Aggregator":        True,
+            "EasyOCR (Primary OCR Engine)": (_dep_check("easyocr"), False),
+            "DeepFace / ArcFace":           (deepface_ok, False),
+            "TensorFlow":                   (_dep_check("tensorflow"), False),
+            "OpenCV Vision Engine":         (_dep_check("cv2"), False),
+            "ELA Forensics Module":         (True, False),
+            "MRZ Multi-Format Engine":      (True, False),
+            "Risk Scoring Aggregator":      (True, False),
+            "PaddleOCR (Optional Fallback)": (_dep_check("paddleocr"), True),
+            "PassportEye (Optional Fallback)": (_dep_check("passporteye"), True),
         }
 
         rows_html = ""
-        for dep_name, ok in dep_status.items():
-            badge = '<span class="badge-pass">✓ Available</span>' if ok else '<span class="badge-fail">✗ Missing</span>'
+        for dep_name, (ok, optional) in dep_status.items():
+            if ok:
+                badge = '<span class="badge-pass">✓ Active</span>'
+            elif optional:
+                badge = '<span style="color:#94a3b8;font-size:0.75rem;padding:2px 6px;border-radius:4px;background:#334155;">Optional</span>'
+            else:
+                badge = '<span class="badge-fail">✗ Missing</span>'
             rows_html += f"""
             <div class="field-row">
                 <span class="field-label">{dep_name}</span>
@@ -593,7 +598,7 @@ if not run_btn:
             f"""
             <div class="guide-box">
                 <div style="font-size: 0.95rem; font-weight: 600; color: #f1f5f9; margin-bottom: 0.8rem;">
-                    🔧 Dependency Status
+                    🔧 Engine & Dependency Status
                 </div>
                 {rows_html}
             </div>
@@ -601,9 +606,11 @@ if not run_btn:
             unsafe_allow_html=True,
         )
 
-        missing_deps = [k for k, v in dep_status.items() if not v]
-        if missing_deps:
-            st.caption(f"⚠️ Missing: {', '.join(missing_deps)}. Run `pip install -r requirements.txt` to fix.")
+        critical_missing = [k for k, (ok, optional) in dep_status.items() if not ok and not optional]
+        if critical_missing:
+            st.caption(f"⚠️ Missing critical components: {', '.join(critical_missing)}.")
+        else:
+            st.caption("🟢 All primary verification engines are online and ready.")
     st.stop()
 
 # ---------------------------------------------------------------------------

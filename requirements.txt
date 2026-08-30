@@ -1,20 +1,19 @@
-# PixelProof - Dependencies
+# PixelProof - Production Streamlit Cloud Dependencies
 streamlit>=1.35.0
 opencv-python-headless>=4.8.0
 Pillow>=10.0.0
 numpy>=1.24.0,<2.0.0
 scikit-image>=0.22.0
 
-# OCR & MRZ Reading
+# OCR (PyTorch-based EasyOCR, zero Linux C++ dependencies needed)
 easyocr>=1.7.2
 torch>=2.0.0
 torchvision>=0.15.0
-passporteye>=2.2.1
 
-# Biometric Verification
+# Biometrics
 deepface>=0.0.91
 tf-keras>=2.16.0
 
-# Text Matching & Display
+# Fuzzy Matching & Data
 rapidfuzz>=3.6.0
 pandas>=2.0.0

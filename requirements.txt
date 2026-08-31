@@ -1,3 +1,4 @@
+﻿# PixelProof dependencies (updated 2026-09-01)
 # PixelProof - Stable Production Dependencies
 streamlit>=1.35.0
 opencv-python>=4.8.0
@@ -18,3 +19,4 @@ deepface>=0.0.91
 # Fuzzy Matching & Data
 rapidfuzz>=3.6.0
 pandas>=2.0.0
+

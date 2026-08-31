@@ -1094,9 +1094,12 @@ try:
                     ("Full Name",           id_result.full_name or "—",         None),
                     ("Date of Birth",       id_result.date_of_birth or "—",     None),
                     ("Gender",              id_result.gender or "—",            None),
+                    ("Blood Group",         id_result.blood_group or "—",       None),
+                    ("Issue Date",          id_result.issue_date or "—",        None),
                     ("Expiry Date",         id_result.expiry_date or "—",       None),
                     ("Issuing Authority",   id_result.issuing_authority or "—", None),
                     ("Nationality",         id_result.nationality or "—",       None),
+                    ("Guardian / Relation", id_result.relation_name or "—",     None),
                     ("Address",             id_result.address or "—",           None),
                 ]
                 rows_html = "".join([render_field_row(l, v, b) for l, v, b in id_fields])

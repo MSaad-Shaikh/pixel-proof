@@ -520,12 +520,26 @@ with st.sidebar:
             st.rerun()
     st.markdown("---")
 
-    st.markdown("**1. Document Upload**")
+    st.markdown("**1. Document Type**")
+    doc_type = st.selectbox(
+        "Select document type",
+        ["Passport", "Visa", "National ID / Driving Licence"],
+        key="doc_type",
+        help="Choose the type of document you are uploading.",
+    )
+
+    _upload_labels = {
+        "Passport": "Upload passport image",
+        "Visa": "Upload visa sticker / stamp image",
+        "National ID / Driving Licence": "Upload ID card / driving licence image",
+    }
+
+    st.markdown("**2. Document Upload**")
     doc_upload = st.file_uploader(
-        "Upload passport / identity document",
+        _upload_labels[doc_type],
         type=["jpg", "jpeg", "png"],
         key="doc_upload",
-        help="Supported formats: JPEG, PNG, BMP",
+        help="Supported formats: JPEG, PNG",
     )
 
     # Orientation Selection Menu
@@ -538,7 +552,7 @@ with st.sidebar:
             key="doc_rotation",
         )
 
-    st.markdown("**2. Traveller Photo**")
+    st.markdown("**3. Traveller Photo**")
     photo_method = st.radio(
         "Input source",
         ["Webcam capture", "Upload file"],
@@ -779,32 +793,58 @@ try:
     quality_report = assess_document_quality(doc_np)
 
     # -----------------------------------------------------------------------
-    # Step 1: MRZ Extraction and Validation (use deskewed derivative)
+    # Step 1: Document Field Extraction (route by doc_type)
     # -----------------------------------------------------------------------
-    with st.spinner("Extracting MRZ…"):
-        mrz_text, mrz_method, mrz_warning = extract_mrz_text(doc_proc_temp)
+    from mrz_engine import MRZResult, parse_and_validate, format_date
 
-    if mrz_warning:
-        st.warning(f"MRZ extraction: {mrz_warning}")
+    visa_result = None
+    id_result = None
 
-    from mrz_engine import parse_and_validate, format_date
+    if doc_type == "Passport":
+        with st.spinner("Extracting MRZ…"):
+            mrz_text, mrz_method, mrz_warning = extract_mrz_text(doc_proc_temp)
+        if mrz_warning:
+            st.warning(f"MRZ extraction: {mrz_warning}")
+        try:
+            if mrz_text:
+                mrz_result = parse_and_validate(mrz_text)
+            else:
+                mrz_result = MRZResult(
+                    status="MRZ_UNREADABLE",
+                    failed_explanations=["MRZ text could not be extracted from the image."],
+                )
+        except Exception as exc:
+            st.warning(f"MRZ validation error: {exc}")
+            mrz_result = MRZResult(status="MRZ_UNREADABLE", failed_explanations=[str(exc)])
 
-    try:
-        if mrz_text:
-            mrz_result = parse_and_validate(mrz_text)
-        else:
-            from mrz_engine import MRZResult
-            mrz_result = MRZResult(
-                status="MRZ_UNREADABLE",
-                failed_explanations=["MRZ text could not be extracted from the image."],
-            )
-    except Exception as exc:
-        st.warning(f"MRZ validation error: {exc}")
-        from mrz_engine import MRZResult
+    elif doc_type == "Visa":
+        with st.spinner("Extracting visa fields (EasyOCR)…"):
+            from visa_engine import extract_visa_fields
+            try:
+                visa_result = extract_visa_fields(doc_proc_temp)
+            except Exception as exc:
+                logger.error("Visa engine error: %s", exc)
+                from visa_engine import VisaResult
+                visa_result = VisaResult(status="UNREADABLE", confidence_note=str(exc))
         mrz_result = MRZResult(
             status="MRZ_UNREADABLE",
-            failed_explanations=[str(exc)],
+            failed_explanations=["MRZ not applicable for Visa documents."],
         )
+
+    else:  # National ID / Driving Licence
+        with st.spinner("Extracting ID fields (EasyOCR)…"):
+            from id_engine import extract_id_fields
+            try:
+                id_result = extract_id_fields(doc_proc_temp)
+            except Exception as exc:
+                logger.error("ID engine error: %s", exc)
+                from id_engine import IDResult
+                id_result = IDResult(status="UNREADABLE", confidence_note=str(exc))
+        mrz_result = MRZResult(
+            status="MRZ_UNREADABLE",
+            failed_explanations=["MRZ not applicable for ID/Licence documents."],
+        )
+
 
     # -----------------------------------------------------------------------
     # Step 2: ELA Forensics (ALWAYS on original bytes — never on derivative)
@@ -984,105 +1024,153 @@ try:
     # -- Three Inspection Modules Grid --------------------------------------
     col1, col2, col3 = st.columns(3)
 
-    # CARD 1: MRZ Document Analysis
+
+    # CARD 1: Document Field Analysis (adapts to doc_type)
     with col1:
-        st.markdown(
-            f"""
-            <div class="slate-card">
-                <div class="card-title">
-                    <span>📋 ICAO {getattr(mrz_result, 'mrz_format', 'TD3')} MRZ</span>
-                    {render_badge('PASSED', 'pass') if mrz_result.all_checks_passed else render_badge('CHECKSUM FAIL', 'fail')}
-                </div>
-            """,
-            unsafe_allow_html=True,
-        )
 
-        if mrz_result.status == "MRZ_UNREADABLE":
-            # Determine the specific reason for failure
-            exp_text = " ".join(mrz_result.failed_explanations).lower() if mrz_result.failed_explanations else ""
-
-            if quality_report.is_blurry:
-                st.error("❌ MRZ Unreadable — Image Too Blurry")
-                st.markdown(
-                    "- The camera focus is too soft for OCR to resolve individual MRZ characters.\n"
-                    "- **Fix:** Hold the camera steady and ensure the document is flat. Use a macro/document scan mode if available."
-                )
-            elif quality_report.has_glare:
-                st.error("❌ MRZ Unreadable — Glare / Overexposure Detected")
-                st.markdown(
-                    "- Specular glare from flash or ambient light is washing out the MRZ strip at the bottom.\n"
-                    "- **Fix:** Tilt the document slightly or diffuse the light source. Avoid scanning near bright windows or overhead lamps."
-                )
-            elif quality_report.is_underexposed:
-                st.error("❌ MRZ Unreadable — Low Light / Underexposed")
-                st.markdown(
-                    "- The image is too dark for OCR to detect character boundaries in the MRZ strip.\n"
-                    "- **Fix:** Move to a brighter environment or add supplemental lighting before rescanning."
-                )
-            elif "length" in exp_text or "44" in exp_text:
-                st.error("❌ MRZ Unreadable — Could Not Find Two 44-Character MRZ Lines")
-                st.markdown(
-                    "- The system located candidate MRZ text but the lines were shorter than the required 44 characters each.\n"
-                    "- **Possible causes:**\n"
-                    "  - The document bottom edge is cropped out of frame.\n"
-                    "  - The image is rotated — try adjusting the **Orientation** slider in the sidebar.\n"
-                    "  - This is a non-standard or AI-generated test document whose MRZ does not follow ICAO TD3 formatting.\n"
-                    "- **Fix:** Crop closer to the bottom of the passport so both MRZ lines are fully visible."
-                )
-            elif "extract" in exp_text or not mrz_text:
-                st.error("❌ MRZ Unreadable — OCR Could Not Extract Text From the Image")
-                st.markdown(
-                    "- None of the available OCR engines (EasyOCR, PaddleOCR, PassportEye) were able to read the document.\n"
-                    "- **Fix checklist:**\n"
-                    "  - ✅ Make sure the full passport data page is visible (not just the cover).\n"
-                    "  - ✅ Check for glare, blur, and ensure the image is right-side up.\n"
-                    "  - ✅ Try rotating the document using the **Orientation** menu in the sidebar.\n"
-                    "  - ✅ Use a minimum resolution of 1000×700 pixels for reliable results."
-                )
+        # ---- VISA CARD ----
+        if doc_type == "Visa" and visa_result is not None:
+            v_status_badge = (
+                render_badge("EXTRACTED", "pass") if visa_result.status == "OK"
+                else render_badge("PARTIAL", "suspicious") if visa_result.status == "PARTIAL"
+                else render_badge("UNREADABLE", "fail")
+            )
+            st.markdown(
+                f"""
+                <div class="slate-card">
+                    <div class="card-title">
+                        <span>🛂 Visa Field Extraction</span>
+                        {v_status_badge}
+                    </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            if visa_result.status == "UNREADABLE":
+                st.error("❌ Could not extract visa fields from this image.")
+                st.caption(visa_result.confidence_note)
             else:
-                st.error("❌ MRZ Unreadable — Non-Standard or Malformed MRZ")
-                st.markdown(
-                    "- The MRZ zone was detected but failed internal format validation.\n"
-                    "- **Possible causes:**\n"
-                    "  - OCR misread characters due to font distortion or print quality.\n"
-                    "  - Document uses a non-standard layout (e.g. TD1 ID card instead of TD3 passport).\n"
-                    "  - The document is a synthetic/AI-generated mock-up."
-                )
+                visa_fields = [
+                    ("Visa Number",      visa_result.visa_number or "—",    None),
+                    ("Visa Type",        visa_result.visa_type or "—",      None),
+                    ("Country of Issue", visa_result.country_of_issue or "—", None),
+                    ("Valid From",       visa_result.valid_from or "—",     None),
+                    ("Valid Until",      visa_result.valid_until or "—",    None),
+                    ("No. of Entries",   visa_result.entries or "—",        None),
+                    ("Stay Duration",    visa_result.stay_duration or "—",  None),
+                    ("Applicant Name",   visa_result.applicant_name or "—", None),
+                    ("Nationality",      visa_result.nationality or "—",    None),
+                ]
+                rows_html = "".join([render_field_row(l, v, b) for l, v, b in visa_fields])
+                st.markdown(rows_html, unsafe_allow_html=True)
+                st.caption(visa_result.confidence_note)
+                with st.expander("Raw OCR Lines", expanded=False):
+                    st.code("\n".join(visa_result.raw_lines), language=None)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-            # Always show the raw technical explanation collapsed
-            if mrz_result.failed_explanations:
-                with st.expander("🔍 Technical Detail", expanded=False):
-                    for exp in mrz_result.failed_explanations:
-                        st.caption(f"• {exp}")
+        # ---- ID / LICENCE CARD ----
+        elif doc_type == "National ID / Driving Licence" and id_result is not None:
+            id_status_badge = (
+                render_badge("EXTRACTED", "pass") if id_result.status == "OK"
+                else render_badge("PARTIAL", "suspicious") if id_result.status == "PARTIAL"
+                else render_badge("UNREADABLE", "fail")
+            )
+            st.markdown(
+                f"""
+                <div class="slate-card">
+                    <div class="card-title">
+                        <span>🪪 {id_result.doc_subtype} Field Extraction</span>
+                        {id_status_badge}
+                    </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            if id_result.status == "UNREADABLE":
+                st.error("❌ Could not extract ID fields from this image.")
+                st.caption(id_result.confidence_note)
+            else:
+                id_fields = [
+                    ("Document Subtype",    id_result.doc_subtype,              None),
+                    ("ID / Licence No.",    id_result.id_number or "—",         None),
+                    ("Full Name",           id_result.full_name or "—",         None),
+                    ("Date of Birth",       id_result.date_of_birth or "—",     None),
+                    ("Gender",              id_result.gender or "—",            None),
+                    ("Expiry Date",         id_result.expiry_date or "—",       None),
+                    ("Issuing Authority",   id_result.issuing_authority or "—", None),
+                    ("Nationality",         id_result.nationality or "—",       None),
+                    ("Address",             id_result.address or "—",           None),
+                ]
+                rows_html = "".join([render_field_row(l, v, b) for l, v, b in id_fields])
+                st.markdown(rows_html, unsafe_allow_html=True)
+                st.caption(id_result.confidence_note)
+                with st.expander("Raw OCR Lines", expanded=False):
+                    st.code("\n".join(id_result.raw_lines), language=None)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # ---- PASSPORT / MRZ CARD (unchanged) ----
         else:
-            from mrz_engine import lookup_country
-            fields = [
-                ("Document Type", mrz_result.document_type, None),
-                ("Issuing State", lookup_country(mrz_result.issuing_state), None),
-                ("Nationality", lookup_country(mrz_result.nationality), None),
-                ("Surname", mrz_result.surname, None),
-                ("Given Names", mrz_result.given_names, None),
-                ("Date of Birth", format_date(mrz_result.date_of_birth), 
-                 render_badge("PASS" if (mrz_result.dob_check and mrz_result.dob_check.passed) else "FAIL", 
-                              "pass" if (mrz_result.dob_check and mrz_result.dob_check.passed) else "fail")),
-                ("Expiry Date", format_date(mrz_result.expiration_date), 
-                 render_badge("PASS" if (mrz_result.expiry_check and mrz_result.expiry_check.passed) else "FAIL", 
-                              "pass" if (mrz_result.expiry_check and mrz_result.expiry_check.passed) else "fail")),
-                ("Document No.", mrz_result.document_number, 
-                 render_badge("PASS" if (mrz_result.document_number_check and mrz_result.document_number_check.passed) else "FAIL", 
-                              "pass" if (mrz_result.document_number_check and mrz_result.document_number_check.passed) else "fail")),
-                ("Composite Check", "—", 
-                 render_badge("PASS" if (mrz_result.composite_check and mrz_result.composite_check.passed) else "FAIL", 
-                              "pass" if (mrz_result.composite_check and mrz_result.composite_check.passed) else "fail")),
-            ]
+            st.markdown(
+                f"""
+                <div class="slate-card">
+                    <div class="card-title">
+                        <span>📋 ICAO {getattr(mrz_result, 'mrz_format', 'TD3')} MRZ</span>
+                        {render_badge('PASSED', 'pass') if mrz_result.all_checks_passed else render_badge('CHECKSUM FAIL', 'fail')}
+                    </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-            rows_html = "".join([render_field_row(l, v, b) for l, v, b in fields])
-            st.markdown(rows_html, unsafe_allow_html=True)
+            if mrz_result.status == "MRZ_UNREADABLE":
+                exp_text = " ".join(mrz_result.failed_explanations).lower() if mrz_result.failed_explanations else ""
+                if quality_report.is_blurry:
+                    st.error("❌ MRZ Unreadable — Image Too Blurry")
+                    st.markdown("- **Fix:** Hold the camera steady and ensure the document is flat.")
+                elif quality_report.has_glare:
+                    st.error("❌ MRZ Unreadable — Glare / Overexposure Detected")
+                    st.markdown("- **Fix:** Tilt the document slightly or diffuse the light source.")
+                elif quality_report.is_underexposed:
+                    st.error("❌ MRZ Unreadable — Low Light / Underexposed")
+                    st.markdown("- **Fix:** Move to a brighter environment before rescanning.")
+                elif "length" in exp_text or "44" in exp_text:
+                    st.error("❌ MRZ Unreadable — Could Not Find Two 44-Character MRZ Lines")
+                    st.markdown(
+                        "- The document bottom edge may be cropped. Try adjusting the **Orientation** slider."
+                    )
+                elif "applicable" in exp_text:
+                    st.info("ℹ️ MRZ validation is only applicable to Passport documents.")
+                else:
+                    st.error("❌ MRZ Unreadable — Non-Standard or Malformed MRZ")
+                if mrz_result.failed_explanations and "applicable" not in exp_text:
+                    with st.expander("🔍 Technical Detail", expanded=False):
+                        for exp in mrz_result.failed_explanations:
+                            st.caption(f"• {exp}")
+            else:
+                from mrz_engine import lookup_country
+                fields = [
+                    ("Document Type",  mrz_result.document_type,                  None),
+                    ("Issuing State",   lookup_country(mrz_result.issuing_state),  None),
+                    ("Nationality",     lookup_country(mrz_result.nationality),    None),
+                    ("Surname",         mrz_result.surname,                        None),
+                    ("Given Names",     mrz_result.given_names,                    None),
+                    ("Date of Birth",   format_date(mrz_result.date_of_birth),
+                     render_badge("PASS" if (mrz_result.dob_check and mrz_result.dob_check.passed) else "FAIL",
+                                  "pass" if (mrz_result.dob_check and mrz_result.dob_check.passed) else "fail")),
+                    ("Expiry Date",     format_date(mrz_result.expiration_date),
+                     render_badge("PASS" if (mrz_result.expiry_check and mrz_result.expiry_check.passed) else "FAIL",
+                                  "pass" if (mrz_result.expiry_check and mrz_result.expiry_check.passed) else "fail")),
+                    ("Document No.",    mrz_result.document_number,
+                     render_badge("PASS" if (mrz_result.document_number_check and mrz_result.document_number_check.passed) else "FAIL",
+                                  "pass" if (mrz_result.document_number_check and mrz_result.document_number_check.passed) else "fail")),
+                    ("Composite Check", "—",
+                     render_badge("PASS" if (mrz_result.composite_check and mrz_result.composite_check.passed) else "FAIL",
+                                  "pass" if (mrz_result.composite_check and mrz_result.composite_check.passed) else "fail")),
+                ]
+                rows_html = "".join([render_field_row(l, v, b) for l, v, b in fields])
+                st.markdown(rows_html, unsafe_allow_html=True)
+                with st.expander("Raw TD3 String", expanded=False):
+                    st.code(f"{mrz_result.raw_line1}\n{mrz_result.raw_line2}", language=None)
 
-            with st.expander("Raw TD3 String", expanded=False):
-                st.code(f"{mrz_result.raw_line1}\n{mrz_result.raw_line2}", language=None)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # CARD 2: Forensic ELA
     with col2:

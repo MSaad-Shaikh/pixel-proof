@@ -111,8 +111,11 @@ def _normalize_ela(mean_error: float) -> float:
 def _normalize_biometric(cosine_distance: float) -> float:
     """Normalise ArcFace cosine distance to a 0-100 risk contribution.
 
-    Linear map: 0.0 -> 0, BIO_MAX_DISTANCE -> 100.
-    Values above BIO_MAX_DISTANCE are clamped at 100.
+    Two-zone mapping to reflect pass/fail semantics properly:
+      - PASSED (distance <= threshold): mapped linearly to 0-40 risk.
+        A near-perfect match (0.0) gives 0 risk; at the threshold it gives 40.
+      - FAILED (distance > threshold): mapped linearly from 40-100 risk.
+        Ensures a failed match is always above the SUSPICIOUS threshold.
 
     Args:
         cosine_distance: Cosine distance from verify_faces().
@@ -120,8 +123,15 @@ def _normalize_biometric(cosine_distance: float) -> float:
     Returns:
         Float risk score in range [0, 100].
     """
-    clamped = max(0.0, min(cosine_distance, BIO_MAX_DISTANCE))
-    return (clamped / BIO_MAX_DISTANCE) * 100.0
+    clamped = max(0.0, min(cosine_distance, 1.0))
+    if clamped <= BIO_MAX_DISTANCE:
+        # Passed: scale 0..threshold → 0..40
+        return (clamped / BIO_MAX_DISTANCE) * 40.0
+    else:
+        # Failed: scale threshold..1.0 → 40..100
+        excess = clamped - BIO_MAX_DISTANCE
+        max_excess = 1.0 - BIO_MAX_DISTANCE
+        return 40.0 + (excess / max_excess) * 60.0 if max_excess > 0 else 100.0
 
 
 def _normalize_text(fuzzy_ratio: float) -> float:

@@ -59,10 +59,11 @@ def _extract_all_fields(lines: list) -> IDResult:
     lower_lines = [l.lower().strip() for l in lines]
 
     # 1. Document Subtype
-    if any("driving" in l or "motor" in l or "dl no" in l for l in lower_lines):
-        result.doc_subtype = "Driving Licence"
-    elif any("aadhaar" in l or "uidai" in l for l in lower_lines):
+    if (any("aadhaar" in l or "uidai" in l or "vid :" in l or "vid:" in l for l in lower_lines)
+            or any(re.search(r"\b\d{4}\s\d{4}\s\d{4}\b", l) for l in lines)):
         result.doc_subtype = "Aadhaar Card"
+    elif any("driving" in l or "motor" in l or "dl no" in l for l in lower_lines):
+        result.doc_subtype = "Driving Licence"
     elif any("pan card" in l or "income tax" in l for l in lower_lines):
         result.doc_subtype = "PAN Card"
     elif any("passport" in l for l in lower_lines):
@@ -72,31 +73,37 @@ def _extract_all_fields(lines: list) -> IDResult:
     else:
         result.doc_subtype = "National ID"
 
-    # 2. DL / ID Number
-    # Look for "DL No MH12 20010149313" or similar
-    dl_pattern = re.compile(r"\b([A-Z]{2}[-\s]?\d{2}[-\s]?\d{7,11})\b", re.IGNORECASE)
-    for i, line in enumerate(lines):
-        # Look for labelled DL number
-        if any(kw in lower_lines[i] for kw in ["dl no", "licence no", "license no", "id no"]):
-            # Try current line after removing label
-            clean_line = re.sub(r"(?i)\b(dl|licence|license|id|no|card)[\s.:#]*", " ", line).strip()
-            m = dl_pattern.search(clean_line)
-            if m:
-                result.id_number = m.group(1).upper()
-                break
-            # Standalone long alphanumeric on same or next line
-            m_generic = re.search(r"\b([A-Z0-9\s]{8,20})\b", clean_line)
-            if m_generic and any(c.isdigit() for c in m_generic.group(1)):
-                result.id_number = m_generic.group(1).strip().upper()
-                break
-            if i + 1 < len(lines):
-                m_next = dl_pattern.search(lines[i+1])
-                if m_next:
-                    result.id_number = m_next.group(1).upper()
+    # 2. DL / ID / Aadhaar Number
+    # First priority: 12-digit Aadhaar pattern (XXXX XXXX XXXX)
+    for line in lines:
+        m_aadhaar = re.search(r"\b(\d{4}\s\d{4}\s\d{4})\b", line)
+        if m_aadhaar:
+            result.id_number = m_aadhaar.group(1)
+            break
+
+    # Second priority: DL format (e.g. MH12 20010149313)
+    if not result.id_number:
+        dl_pattern = re.compile(r"\b([A-Z]{2}[-\s]?\d{2}[-\s]?\d{7,11})\b", re.IGNORECASE)
+        for i, line in enumerate(lines):
+            if any(kw in lower_lines[i] for kw in ["dl no", "licence no", "license no", "id no"]):
+                clean_line = re.sub(r"(?i)\b(dl|licence|license|id|no|card)[\s.:#]*", " ", line).strip()
+                m = dl_pattern.search(clean_line)
+                if m:
+                    result.id_number = m.group(1).upper()
                     break
+                m_generic = re.search(r"\b([A-Z0-9\s]{8,20})\b", clean_line)
+                if m_generic and any(c.isdigit() for c in m_generic.group(1)):
+                    result.id_number = m_generic.group(1).strip().upper()
+                    break
+                if i + 1 < len(lines):
+                    m_next = dl_pattern.search(lines[i+1])
+                    if m_next:
+                        result.id_number = m_next.group(1).upper()
+                        break
 
     # Fallback search anywhere in document
     if not result.id_number:
+        dl_pattern = re.compile(r"\b([A-Z]{2}[-\s]?\d{2}[-\s]?\d{7,11})\b", re.IGNORECASE)
         for line in lines:
             m = dl_pattern.search(line)
             if m:
@@ -104,42 +111,41 @@ def _extract_all_fields(lines: list) -> IDResult:
                 break
 
     # 3. Issuing Authority
-    # Look for State Header or "Issuing Authority: MH12 ..."
-    state_match = None
-    # Check for specific State or Department name first
-    for line in lines:
-        ll = line.lower()
-        if ("state" in ll or "government of" in ll or "transport" in ll) and not any(k in ll for k in ["authorisation", "rule", "class", "vehicle"]):
-            clean = line.strip(" :-\t")
-            if len(clean) > 8:
-                state_match = clean.title()
-                break
-    if not state_match:
+    if result.doc_subtype == "Aadhaar Card":
+        result.issuing_authority = "Government of India / UIDAI"
+    else:
+        state_match = None
         for line in lines:
-            if "union of india" in line.lower():
-                state_match = line.strip(" :-\t").title()
-                break
-    
-    # Check for specific "Issuing Authority:" label
-    auth_code = None
-    for i, line in enumerate(lines):
-        if "issuing authority" in lower_lines[i]:
-            # Next line usually has officer code e.g. "MH12 2016502"
-            if i + 1 < len(lines):
-                nxt = lines[i+1].strip()
-                if nxt and not any(k in nxt.lower() for k in ["impression", "holder", "signature"]):
-                    auth_code = nxt.strip()
-            elif ":" in line:
-                val = line.split(":", 1)[-1].strip()
-                if val and len(val) > 2:
-                    auth_code = val
+            ll = line.lower()
+            if ("state" in ll or "government of" in ll or "transport" in ll) and not any(k in ll for k in ["authorisation", "rule", "class", "vehicle"]):
+                clean = line.strip(" :-\t")
+                if len(clean) > 8:
+                    state_match = clean.title()
+                    break
+        if not state_match:
+            for line in lines:
+                if "union of india" in line.lower():
+                    state_match = line.strip(" :-\t").title()
+                    break
+        
+        auth_code = None
+        for i, line in enumerate(lines):
+            if "issuing authority" in lower_lines[i]:
+                if i + 1 < len(lines):
+                    nxt = lines[i+1].strip()
+                    if nxt and not any(k in nxt.lower() for k in ["impression", "holder", "signature"]):
+                        auth_code = nxt.strip()
+                elif ":" in line:
+                    val = line.split(":", 1)[-1].strip()
+                    if val and len(val) > 2:
+                        auth_code = val
 
-    if state_match and auth_code:
-        result.issuing_authority = f"{state_match} ({auth_code})"
-    elif state_match:
-        result.issuing_authority = state_match
-    elif auth_code:
-        result.issuing_authority = auth_code
+        if state_match and auth_code:
+            result.issuing_authority = f"{state_match} ({auth_code})"
+        elif state_match:
+            result.issuing_authority = state_match
+        elif auth_code:
+            result.issuing_authority = auth_code
 
     # 4. Name
     for i, line in enumerate(lines):
@@ -155,7 +161,6 @@ def _extract_all_fields(lines: list) -> IDResult:
             for j in range(i + 1, min(i + 4, len(lines))):
                 candidate = lines[j].strip()
                 cand_lower = candidate.lower()
-                # Stop if we hit another key
                 if any(cand_lower.startswith(k) or k in cand_lower for k in [
                     "s/d/w", "sidn", "son", "daughter", "wife", "add", "dob", "bg", "blood", "pin", "signature"
                 ]):
@@ -168,10 +173,37 @@ def _extract_all_fields(lines: list) -> IDResult:
                 result.full_name = " ".join(name_parts).title()
                 break
 
-    # 5. Date of Birth (DOB)
+    # Fallback for Aadhaar / unlabelled IDs: English name is directly above DOB line
+    if not result.full_name:
+        dob_idx = -1
+        for i, l in enumerate(lines):
+            if "dob" in lower_lines[i] or "जन्म" in l or re.search(r"\b\d{2}[-/.]\d{2}[-/.]\d{4}\b", l):
+                dob_idx = i
+                break
+        if dob_idx > 0:
+            for j in range(dob_idx - 1, -1, -1):
+                cand = lines[j].strip()
+                cand_lower = cand.lower()
+                if (re.match(r"^[A-Za-z\s.'-]+$", cand)
+                    and len(cand) >= 4
+                    and not any(k in cand_lower for k in ["government", "india", "union", "state", "licence", "license", "card", "mera", "meri"])):
+                    result.full_name = cand.title()
+                    break
+
+    # 5. Gender
+    for line in lines:
+        ll = line.lower()
+        if "female" in ll or "महिला" in line or "/ female" in ll:
+            result.gender = "Female"
+            break
+        elif "male" in ll or "पुरुष" in line or "/ male" in ll or "5oq/" in ll:
+            result.gender = "Male"
+            break
+
+    # 6. Date of Birth (DOB)
     for i, line in enumerate(lines):
         ll = lower_lines[i]
-        if "dob" in ll or "date of birth" in ll or "birth" in ll:
+        if "dob" in ll or "date of birth" in ll or "birth" in ll or "जन्म" in line:
             dob_val = _find_date_in_or_next(lines, i)
             if dob_val:
                 result.date_of_birth = dob_val
@@ -253,8 +285,9 @@ def _extract_all_fields(lines: list) -> IDResult:
     # Count extracted fields
     found = sum(1 for f in [
         result.id_number, result.full_name, result.date_of_birth,
-        result.issue_date, result.expiry_date, result.issuing_authority,
-        result.address, result.nationality, result.relation_name,
+        result.gender, result.issue_date, result.expiry_date,
+        result.issuing_authority, result.address, result.nationality,
+        result.relation_name,
     ] if f is not None)
     result.fields_found = found
 

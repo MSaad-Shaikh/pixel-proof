@@ -12,8 +12,6 @@ Checks performed:
 Zero Streamlit imports - purely functional and UI-agnostic.
 """
 
-from __future__ import annotations
-
 import logging
 from dataclasses import dataclass, field
 from typing import Optional, Tuple

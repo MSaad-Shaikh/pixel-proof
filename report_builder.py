@@ -16,8 +16,6 @@ The report includes:
   - Reviewer decision fields
 """
 
-from __future__ import annotations
-
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -33,24 +31,11 @@ def build_evidence_report(
     risk: dict,
     mrz_method: str = "",
     doc_proc_note: str = "",
+    doc_type: str = "Passport",
+    id_result=None,
+    visa_result=None,
 ) -> str:
-    """Build a Markdown evidence report string from all verification outputs.
-
-    Args:
-        original_filename:  Original uploaded document filename.
-        sha256_hash:        SHA-256 hex digest of the original uploaded bytes.
-        mrz_result:         MRZResult dataclass from mrz_engine.
-        ela_result:         Dict from ela_forensics.perform_ela().
-        bio_result:         Dict from biometrics.verify_faces().
-        text_consistency:   Dict from risk_engine.compute_text_consistency().
-        quality_report:     QualityReport dataclass from quality_engine.
-        risk:               Dict from risk_engine.compute_risk_score().
-        mrz_method:         Which OCR engine extracted the MRZ (e.g. "EasyOCR").
-        doc_proc_note:      Note about any processing applied (e.g. rotation).
-
-    Returns:
-        Markdown string ready to write to a .md or .txt file.
-    """
+    """Build a Markdown evidence report string from all verification outputs."""
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     verdict_emoji = {
         "LOW RISK": "🟢",
@@ -71,12 +56,13 @@ def build_evidence_report(
         "",
         "## 1. Source Document",
         "",
-        f"| Field | Value |",
-        f"|-------|-------|",
+        "| Field | Value |",
+        "|-------|-------|",
         f"| Original Filename | `{original_filename}` |",
         f"| SHA-256 Hash | `{sha256_hash}` |",
+        f"| Document Type | `{doc_type}` |",
         f"| Inspection Timestamp | `{ts}` |",
-        f"| OCR Engine Used | {mrz_method or 'Unknown'} |",
+        f"| Extraction Engine | {mrz_method or 'EasyOCR'} |",
     ]
     if doc_proc_note:
         lines.append(f"| Processing Note | {doc_proc_note} |")
@@ -86,41 +72,89 @@ def build_evidence_report(
         "",
         "---",
         "",
-        "## 2. MRZ Extraction & Validation",
-        "",
     ]
 
-    if mrz_result.status == "MRZ_UNREADABLE":
+    # Section 2: Document specific field extraction
+    if doc_type == "Passport":
         lines += [
-            "**Status:** ❌ MRZ UNREADABLE",
+            "## 2. MRZ Extraction & Validation",
             "",
-            "**Failure reasons:**",
         ]
-        for exp in (mrz_result.failed_explanations or []):
-            lines.append(f"- {exp}")
-    else:
-        status_icon = "✅" if mrz_result.all_checks_passed else "❌"
+        if mrz_result.status == "MRZ_UNREADABLE":
+            lines += [
+                "**Status:** ❌ MRZ UNREADABLE",
+                "",
+                "**Failure reasons:**",
+            ]
+            for exp in (mrz_result.failed_explanations or []):
+                lines.append(f"- {exp}")
+        else:
+            status_icon = "✅" if mrz_result.all_checks_passed else "❌"
+            lines += [
+                f"**Status:** {status_icon} {'ALL CHECKS PASSED' if mrz_result.all_checks_passed else 'CHECKSUM FAILURE'}",
+                "",
+                "| Field | Value | Check |",
+                "|-------|-------|-------|",
+                f"| Document Type | `{mrz_result.document_type or '—'}` | — |",
+                f"| Issuing State | `{mrz_result.issuing_state or '—'}` | — |",
+                f"| Nationality | `{mrz_result.nationality or '—'}` | — |",
+                f"| Surname | `{mrz_result.surname or '—'}` | — |",
+                f"| Given Names | `{mrz_result.given_names or '—'}` | — |",
+                f"| Date of Birth | `{mrz_result.date_of_birth or '—'}` | {'✅' if mrz_result.dob_check and mrz_result.dob_check.passed else '❌'} |",
+                f"| Expiry Date | `{mrz_result.expiration_date or '—'}` | {'✅' if mrz_result.expiry_check and mrz_result.expiry_check.passed else '❌'} |",
+                f"| Document Number | `{mrz_result.document_number or '—'}` | {'✅' if mrz_result.document_number_check and mrz_result.document_number_check.passed else '❌'} |",
+                f"| Composite Check Digit | — | {'✅' if mrz_result.composite_check and mrz_result.composite_check.passed else '❌'} |",
+                "",
+                "**Raw TD3 String:**",
+                "```",
+                mrz_result.raw_line1 or "",
+                mrz_result.raw_line2 or "",
+                "```",
+            ]
+    elif doc_type == "Visa":
         lines += [
-            f"**Status:** {status_icon} {'ALL CHECKS PASSED' if mrz_result.all_checks_passed else 'CHECKSUM FAILURE'}",
+            "## 2. Visa Field Extraction",
             "",
-            "| Field | Value | Check |",
-            "|-------|-------|-------|",
-            f"| Document Type | `{mrz_result.document_type or '—'}` | — |",
-            f"| Issuing State | `{mrz_result.issuing_state or '—'}` | — |",
-            f"| Nationality | `{mrz_result.nationality or '—'}` | — |",
-            f"| Surname | `{mrz_result.surname or '—'}` | — |",
-            f"| Given Names | `{mrz_result.given_names or '—'}` | — |",
-            f"| Date of Birth | `{mrz_result.date_of_birth or '—'}` | {'✅' if mrz_result.dob_check and mrz_result.dob_check.passed else '❌'} |",
-            f"| Expiry Date | `{mrz_result.expiration_date or '—'}` | {'✅' if mrz_result.expiry_check and mrz_result.expiry_check.passed else '❌'} |",
-            f"| Document Number | `{mrz_result.document_number or '—'}` | {'✅' if mrz_result.document_number_check and mrz_result.document_number_check.passed else '❌'} |",
-            f"| Composite Check Digit | — | {'✅' if mrz_result.composite_check and mrz_result.composite_check.passed else '❌'} |",
-            "",
-            "**Raw TD3 String:**",
-            "```",
-            mrz_result.raw_line1 or "",
-            mrz_result.raw_line2 or "",
-            "```",
         ]
+        if visa_result and getattr(visa_result, "status", "") != "UNREADABLE":
+            lines += [
+                "**Status:** ✅ EXTRACTED",
+                "",
+                "| Field | Value |",
+                "|-------|-------|",
+                f"| Document Subtype | `{getattr(visa_result, 'doc_subtype', 'Visa')}` |",
+                f"| Visa Number | `{getattr(visa_result, 'visa_number', '—')}` |",
+                f"| Full Name | `{getattr(visa_result, 'full_name', '—')}` |",
+                f"| Passport Number | `{getattr(visa_result, 'passport_number', '—')}` |",
+                f"| Nationality | `{getattr(visa_result, 'nationality', '—')}` |",
+                f"| Valid From | `{getattr(visa_result, 'valid_from', '—')}` |",
+                f"| Valid Until | `{getattr(visa_result, 'valid_until', '—')}` |",
+                f"| Issuing Post | `{getattr(visa_result, 'issuing_post', '—')}` |",
+            ]
+        else:
+            lines += ["**Status:** ⚠️ UNREADABLE or Partially Extracted"]
+    else:  # National ID / Driving Licence / Aadhaar
+        lines += [
+            f"## 2. {doc_type} Field Extraction",
+            "",
+        ]
+        if id_result and getattr(id_result, "status", "") != "UNREADABLE":
+            lines += [
+                "**Status:** ✅ EXTRACTED",
+                "",
+                "| Field | Value |",
+                "|-------|-------|",
+                f"| Document Subtype | `{getattr(id_result, 'doc_subtype', doc_type)}` |",
+                f"| ID / Licence Number | `{getattr(id_result, 'id_number', '—')}` |",
+                f"| Full Name | `{getattr(id_result, 'full_name', '—')}` |",
+                f"| Date of Birth | `{getattr(id_result, 'date_of_birth', getattr(id_result, 'dob', '—'))}` |",
+                f"| Gender | `{getattr(id_result, 'gender', '—')}` |",
+                f"| Issuing Authority | `{getattr(id_result, 'issuing_authority', '—')}` |",
+                f"| Blood Group | `{getattr(id_result, 'blood_group', '—')}` |",
+                f"| Expiry Date | `{getattr(id_result, 'expiry_date', '—')}` |",
+            ]
+        else:
+            lines += ["**Status:** ⚠️ UNREADABLE or Partially Extracted"]
     lines += [
         "",
         "---",
@@ -178,7 +212,9 @@ def build_evidence_report(
         "",
     ]
 
-    if not text_consistency.get("available"):
+    if doc_type != "Passport":
+        lines.append("**Status:** ➖ NOT APPLICABLE (VIZ cross-check against MRZ is specific to Passports).")
+    elif not text_consistency.get("available"):
         lines.append("**Status:** ⚪ UNAVAILABLE — OCR could not extract printed fields for comparison.")
     else:
         lines += [

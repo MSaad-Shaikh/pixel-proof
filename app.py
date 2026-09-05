@@ -799,6 +799,7 @@ try:
 
     visa_result = None
     id_result = None
+    mrz_method = ""
 
     if doc_type == "Passport":
         with st.spinner("Extracting MRZ…"):
@@ -818,6 +819,7 @@ try:
             mrz_result = MRZResult(status="MRZ_UNREADABLE", failed_explanations=[str(exc)])
 
     elif doc_type == "Visa":
+        mrz_method = "EasyOCR (Visa Engine)"
         with st.spinner("Extracting visa fields (EasyOCR)…"):
             from visa_engine import extract_visa_fields
             try:
@@ -832,6 +834,7 @@ try:
         )
 
     else:  # National ID / Driving Licence
+        mrz_method = "EasyOCR (ID Engine)"
         with st.spinner("Extracting ID fields (EasyOCR)…"):
             from id_engine import extract_id_fields
             try:
@@ -1370,6 +1373,9 @@ try:
                 risk=risk,
                 mrz_method=mrz_method,
                 doc_proc_note=doc_proc_note,
+                doc_type=doc_type,
+                id_result=id_result,
+                visa_result=visa_result,
             )
             st.download_button(
                 label="⬇️ Download Report (.md)",

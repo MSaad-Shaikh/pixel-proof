@@ -1,4 +1,4 @@
-﻿"""
+"""
 app.py  PixelProof - Educational Document Verification Demo
 ================================================================
 Streamlit dashboard for the PixelProof hackathon prototype.
@@ -50,8 +50,8 @@ logger = logging.getLogger(__name__)
 # Page config
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="PixelProof â€” Verification Console",
-    page_icon="ðŸ›¡ï¸",
+    page_title="PixelProof — Verification Console",
+    page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -245,7 +245,7 @@ st.markdown(
 # Cached resource loaders
 # ---------------------------------------------------------------------------
 
-@st.cache_resource(show_spinner="Loading MRZ / OCR engineâ€¦")
+@st.cache_resource(show_spinner="Loading MRZ / OCR engine…")
 def get_passport_eye_reader():
     """Attempt to load PassportEye MRZReader (cached across sessions).
 
@@ -260,7 +260,7 @@ def get_passport_eye_reader():
         return None
 
 
-@st.cache_resource(show_spinner="Loading EasyOCR engineâ€¦")
+@st.cache_resource(show_spinner="Loading EasyOCR engine…")
 def get_easy_ocr_reader():
     """Load EasyOCR (cached across sessions).
 
@@ -275,9 +275,9 @@ def get_easy_ocr_reader():
         return None
 
 
-@st.cache_resource(show_spinner="Loading PaddleOCR engineâ€¦")
+@st.cache_resource(show_spinner="Loading PaddleOCR engine…")
 def get_paddle_ocr():
-    """Load PaddleOCR (cached â€” initialisation is expensive).
+    """Load PaddleOCR (cached — initialisation is expensive).
 
     Returns:
         PaddleOCR instance, or None if unavailable.
@@ -290,7 +290,7 @@ def get_paddle_ocr():
         return None
 
 
-@st.cache_resource(show_spinner="Warming up DeepFace / ArcFace modelâ€¦")
+@st.cache_resource(show_spinner="Warming up DeepFace / ArcFace model…")
 def warmup_deepface() -> bool:
     """Trigger DeepFace model download/cache on startup (ArcFace).
 
@@ -422,17 +422,17 @@ def extract_mrz_text(image_path: str) -> tuple:
 def render_badge(label: str, status: str = "pass") -> str:
     """Render a clean, subtle badge."""
     if status == "pass":
-        return f'<span class="badge-pass">âœ“ {label}</span>'
+        return f'<span class="badge-pass">✓ {label}</span>'
     elif status == "fail":
-        return f'<span class="badge-fail">âœ— {label}</span>'
+        return f'<span class="badge-fail">✗ {label}</span>'
     elif status == "suspicious":
-        return f'<span class="badge-suspicious">âš  {label}</span>'
+        return f'<span class="badge-suspicious">⚠ {label}</span>'
     return f'<span class="badge-neutral">{label}</span>'
 
 
 def render_field_row(label: str, value: str, badge_html: Optional[str] = None) -> str:
     """Render a clean key-value row for document inspection."""
-    display_val = value if value else "â€”"
+    display_val = value if value else "—"
     badge_part = f"&nbsp;&nbsp;{badge_html}" if badge_html else ""
     return f"""
     <div class="field-row">
@@ -459,7 +459,7 @@ if not st.session_state.get("authenticated", False):
         st.markdown(
             """
             <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.8rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4); text-align: center; margin-bottom: 1.2rem;">
-                <div style="font-size: 2.2rem; margin-bottom: 0.3rem;">ðŸ›¡ï¸</div>
+                <div style="font-size: 2.2rem; margin-bottom: 0.3rem;">🛡️</div>
                 <div style="font-size: 1.4rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.02em;">PixelProof Portal</div>
                 <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.2rem;">Border Control & Forensic Verification Console</div>
             </div>
@@ -484,7 +484,7 @@ if not st.session_state.get("authenticated", False):
             """
             <div style="background: #0f172a; border: 1px dashed #3b82f6; border-radius: 8px; padding: 0.9rem; margin-top: 1rem; margin-bottom: 1rem;">
                 <div style="font-size: 0.82rem; font-weight: 600; color: #60a5fa; margin-bottom: 0.2rem;">
-                    ðŸ’¡ Hackathon Presentation Demo Account
+                    💡 Hackathon Presentation Demo Account
                 </div>
                 <div style="font-size: 0.8rem; color: #cbd5e1;">
                     <strong>User:</strong> <code>officer_demo</code> &nbsp;|&nbsp; <strong>Password:</strong> <code>pixelproof2026</code>
@@ -494,7 +494,7 @@ if not st.session_state.get("authenticated", False):
             unsafe_allow_html=True,
         )
         
-        if st.button("âš¡ 1-Click Demo Login (Instant Access)", use_container_width=True):
+        if st.button("⚡ 1-Click Demo Login (Instant Access)", use_container_width=True):
             st.session_state["authenticated"] = True
             st.session_state["user"] = "officer_demo"
             st.rerun()
@@ -506,13 +506,13 @@ if not st.session_state.get("authenticated", False):
 # ---------------------------------------------------------------------------
 
 with st.sidebar:
-    st.markdown("### ðŸ›¡ï¸ PixelProof")
+    st.markdown("### 🛡️ PixelProof")
     st.caption("Automated Document Verification System")
     
     # Active Officer indicator & logout button
     c_user, c_out = st.columns([3, 2])
     with c_user:
-        st.caption(f"ðŸ‘¤ `{st.session_state.get('user', 'officer_demo')}`")
+        st.caption(f"👤 `{st.session_state.get('user', 'officer_demo')}`")
     with c_out:
         if st.button("Log Out", key="logout_btn", use_container_width=True):
             st.session_state["authenticated"] = False
@@ -546,9 +546,9 @@ with st.sidebar:
     doc_rotation = 0
     if doc_upload is not None:
         doc_rotation = st.selectbox(
-            "ðŸ”„ Orientation / Rotation",
+            "🔄 Orientation / Rotation",
             [0, 90, 180, 270],
-            format_func=lambda x: f"{x}Â° (Normal)" if x == 0 else (f"{x}Â° (Clockwise)" if x == 90 else (f"{x}Â° (Inverted)" if x == 180 else f"{x}Â° (Counter-CW)")),
+            format_func=lambda x: f"{x}° (Normal)" if x == 0 else (f"{x}° (Clockwise)" if x == 90 else (f"{x}° (Inverted)" if x == 180 else f"{x}° (Counter-CW)")),
             key="doc_rotation",
         )
 
@@ -589,13 +589,13 @@ st.markdown(
     """
     <div class="header-container">
         <div class="header-title">
-            <span>ðŸ›¡ï¸ PixelProof</span>
+            <span>🛡️ PixelProof</span>
             <span class="header-tag">Inspection Workstation</span>
         </div>
         <div style="font-size: 0.8rem; color: #64748b;">ICAO Doc 9303 TD3 Compliant</div>
     </div>
     <div class="subtle-disclaimer">
-        â„¹ï¸ <strong>Educational Prototype:</strong> Evaluates document integrity heuristics (MRZ checksums, compression artifacts, facial biometrics). Not certified for operational border decisions.
+        ℹ️ <strong>Educational Prototype:</strong> Evaluates document integrity heuristics (MRZ checksums, compression artifacts, facial biometrics). Not certified for operational border decisions.
     </div>
     """,
     unsafe_allow_html=True,
@@ -666,11 +666,11 @@ if not run_btn:
         rows_html = ""
         for dep_name, (ok, optional) in dep_status.items():
             if ok:
-                badge = '<span class="badge-pass">âœ“ Active</span>'
+                badge = '<span class="badge-pass">✓ Active</span>'
             elif optional:
                 badge = '<span style="color:#94a3b8;font-size:0.75rem;padding:2px 6px;border-radius:4px;background:#334155;">Optional</span>'
             else:
-                badge = '<span class="badge-fail">âœ— Missing</span>'
+                badge = '<span class="badge-fail">✗ Missing</span>'
             rows_html += f"""
             <div class="field-row">
                 <span class="field-label">{dep_name}</span>
@@ -681,7 +681,7 @@ if not run_btn:
             f"""
             <div class="guide-box">
                 <div style="font-size: 0.95rem; font-weight: 600; color: #f1f5f9; margin-bottom: 0.8rem;">
-                    ðŸ”§ Engine & Dependency Status
+                    🔧 Engine & Dependency Status
                 </div>
                 {rows_html}
             </div>
@@ -691,9 +691,9 @@ if not run_btn:
 
         critical_missing = [k for k, (ok, optional) in dep_status.items() if not ok and not optional]
         if critical_missing:
-            st.caption(f"âš ï¸ Missing critical components: {', '.join(critical_missing)}.")
+            st.caption(f"⚠️ Missing critical components: {', '.join(critical_missing)}.")
         else:
-            st.caption("ðŸŸ¢ All primary verification engines are online and ready.")
+            st.caption("🟢 All primary verification engines are online and ready.")
     st.stop()
 
 # ---------------------------------------------------------------------------
@@ -716,7 +716,7 @@ doc_ext = Path(doc_upload.name).suffix.lower() if hasattr(doc_upload, "name") el
 if doc_ext not in {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"}:
     doc_ext = ".jpg"
 
-# F1: Save original bytes untouched â€” this is the evidence-anchor file
+# F1: Save original bytes untouched — this is the evidence-anchor file
 doc_orig_temp = uploaded_to_temp(doc_upload, suffix=doc_ext)
 # Also save for OCR/ELA derivative (will be overwritten with rotated version)
 doc_upload.seek(0)
@@ -734,7 +734,7 @@ if doc_orig_temp is None or doc_proc_temp is None or live_temp is None:
     cleanup_temp(live_temp)
     st.stop()
 
-# F1: Compute SHA-256 of original bytes â€” immutable evidence hash
+# F1: Compute SHA-256 of original bytes — immutable evidence hash
 import hashlib as _hashlib
 try:
     with open(doc_orig_temp, "rb") as _f:
@@ -750,15 +750,16 @@ try:
         raw_pil = Image.open(doc_orig_temp).convert("RGB")
 
         # === MEMORY GUARD ===
-        # Cap image resolution at 2000px on longest side to prevent OOM.
-        # Streamlit Cloud has 1 GB RAM; a 4000x3000 image creates a ~36 MB
-        # numpy array which compounds during ELA, face cropping, heatmaps etc.
-        MAX_SIDE = 2000
+        # Cap image resolution at 2000px longest side to prevent OOM.
+        # Streamlit Cloud has 1 GB RAM; 4000x3000 → ~36 MB numpy array that
+        # compounds during ELA, face crops, heatmaps, etc.
+        _MAX_SIDE = 2000
         _w, _h = raw_pil.size
-        if max(_w, _h) > MAX_SIDE:
-            _scale = MAX_SIDE / max(_w, _h)
-            raw_pil = raw_pil.resize((int(_w * _scale), int(_h * _scale)), Image.LANCZOS)
-            # Re-save the original temp with the resized version so ELA runs on same size
+        if max(_w, _h) > _MAX_SIDE:
+            _scale = _MAX_SIDE / max(_w, _h)
+            raw_pil = raw_pil.resize(
+                (int(_w * _scale), int(_h * _scale)), Image.LANCZOS
+            )
             raw_pil.save(doc_orig_temp, format="JPEG", quality=95)
 
         if doc_rotation != 0:
@@ -772,18 +773,18 @@ try:
         from perspective import auto_deskew
         doc_np_deskewed, was_deskewed = auto_deskew(doc_np)
         doc_proc_note = (
-            f"Rotation {doc_rotation}Â° applied; perspective correction applied."
+            f"Rotation {doc_rotation}° applied; perspective correction applied."
             if was_deskewed else
-            f"Rotation {doc_rotation}Â° applied; no perspective correction needed."
+            f"Rotation {doc_rotation}° applied; no perspective correction needed."
             if doc_rotation != 0 else
             "No rotation or perspective correction applied."
         )
 
-        # Save deskewed derivative for OCR (not for ELA â€” ELA uses orig)
+        # Save deskewed derivative for OCR (not for ELA — ELA uses orig)
         doc_proc_pil = Image.fromarray(doc_np_deskewed)
         doc_proc_pil.save(doc_proc_temp, format="JPEG", quality=95)
 
-        # Free intermediate PIL objects; keep doc_np for biometrics display
+        # Free intermediate PIL objects to save memory; keep doc_np for display
         del raw_pil, doc_proc_pil
 
     except Exception as exc:
@@ -818,7 +819,7 @@ try:
     mrz_method = ""
 
     if doc_type == "Passport":
-        with st.spinner("Extracting MRZâ€¦"):
+        with st.spinner("Extracting MRZ…"):
             mrz_text, mrz_method, mrz_warning = extract_mrz_text(doc_proc_temp)
         if mrz_warning:
             st.warning(f"MRZ extraction: {mrz_warning}")
@@ -836,7 +837,7 @@ try:
 
     elif doc_type == "Visa":
         mrz_method = "EasyOCR (Visa Engine)"
-        with st.spinner("Extracting visa fields (EasyOCR)â€¦"):
+        with st.spinner("Extracting visa fields (EasyOCR)…"):
             from visa_engine import extract_visa_fields
             try:
                 reader = get_easy_ocr_reader()
@@ -852,7 +853,7 @@ try:
 
     else:  # National ID / Driving Licence
         mrz_method = "EasyOCR (ID Engine)"
-        with st.spinner("Extracting ID fields (EasyOCR)â€¦"):
+        with st.spinner("Extracting ID fields (EasyOCR)…"):
             from id_engine import extract_id_fields
             try:
                 reader = get_easy_ocr_reader()
@@ -868,9 +869,9 @@ try:
 
 
     # -----------------------------------------------------------------------
-    # Step 2: ELA Forensics (ALWAYS on original bytes â€” never on derivative)
+    # Step 2: ELA Forensics (ALWAYS on original bytes — never on derivative)
     # -----------------------------------------------------------------------
-    with st.spinner("Running ELA forensicsâ€¦"):
+    with st.spinner("Running ELA forensics…"):
         from ela_forensics import perform_ela, heatmap_to_rgb
         try:
             ela_result = perform_ela(doc_orig_temp)
@@ -893,7 +894,7 @@ try:
     }
 
     if deepface_ok:
-        with st.spinner("Running face verification (ArcFace)â€¦"):
+        with st.spinner("Running face verification (ArcFace)…"):
             from biometrics import verify_faces, draw_bbox_on_image
             try:
                 bio_result = verify_faces(doc_np, live_np)
@@ -906,7 +907,7 @@ try:
     gc.collect()
 
     # -----------------------------------------------------------------------
-    # Step 4: Text Consistency (VIZ vs MRZ) â€” specific to Passports
+    # Step 4: Text Consistency (VIZ vs MRZ) — specific to Passports
     # -----------------------------------------------------------------------
     text_consistency = {
         "overall_ratio": None, "available": False,
@@ -914,7 +915,7 @@ try:
         "fields_available": {"name": False, "dob": False, "doc_number": False},
     }
     if doc_type == "Passport":
-        with st.spinner("Checking text consistencyâ€¦"):
+        with st.spinner("Checking text consistency…"):
             from risk_engine import extract_viz_fields_with_ocr, compute_text_consistency
             try:
                 reader = get_easy_ocr_reader()
@@ -935,11 +936,11 @@ try:
     from risk_engine import compute_risk_score
 
     # For Passports: MRZ fail = security failure. For Aadhaar/DL/Visa: MRZ is
-    # not applicable â€” pass None so the weight is redistributed across other checks.
+    # not applicable — pass None so the weight is redistributed across other checks.
     if doc_type == "Passport":
         mrz_passed_val = True if mrz_result.status == "OK" else False
     else:
-        mrz_passed_val = None  # Not applicable â€” no MRZ strip on these documents
+        mrz_passed_val = None  # Not applicable — no MRZ strip on these documents
 
     ela_error_val = ela_result.get("mean_error") if not ela_result.get("error") else None
     bio_dist_val = bio_result.get("distance")
@@ -970,7 +971,7 @@ try:
         "LOW RISK":      render_badge("LOW RISK", "pass"),
         "SUSPICIOUS":    render_badge("SUSPICIOUS", "suspicious"),
         "CRITICAL RISK": render_badge("CRITICAL RISK", "fail"),
-        "MANUAL REVIEW": render_badge("âš  MANUAL REVIEW", "suspicious"),
+        "MANUAL REVIEW": render_badge("⚠ MANUAL REVIEW", "suspicious"),
         "INCOMPLETE":    render_badge("INCOMPLETE", "neutral"),
     }
     cat_badge = cat_badge_map.get(risk["category"], render_badge(risk["category"], "neutral"))
@@ -1014,7 +1015,7 @@ try:
     # -- F2: MANUAL REVIEW Banner -------------------------------------------
     if risk.get("manual_review"):
         st.warning(
-            "âš ï¸ **MANUAL REVIEW REQUIRED** â€” Biometric face verification and text "
+            "⚠️ **MANUAL REVIEW REQUIRED** — Biometric face verification and text "
             "consistency checks were both unavailable. A definitive automated verdict "
             "cannot be issued. Human review by an authorised officer is mandatory before "
             "making any decision on this document."
@@ -1024,13 +1025,13 @@ try:
     orig_name = getattr(doc_upload, "name", "uploaded_document")
     _proc_cols = st.columns([3, 2])
     with _proc_cols[0]:
-        st.caption(f"ðŸ“Ž **Source:** `{orig_name}` | **SHA-256:** `{doc_sha256}`")
+        st.caption(f"📎 **Source:** `{orig_name}` | **SHA-256:** `{doc_sha256}`")
     with _proc_cols[1]:
-        st.caption(f"ðŸ”„ {doc_proc_note}")
+        st.caption(f"🔄 {doc_proc_note}")
 
     # -- Pre-Flight Quality Diagnostics Bar ---------------------------------
     q_badge_style = "pass" if quality_report.passed else ("suspicious" if quality_report.quality_grade == "FAIR" else "fail")
-    with st.expander(f"ðŸ” Pre-Flight Quality Diagnostics (Grade: {quality_report.quality_grade})", expanded=not quality_report.passed):
+    with st.expander(f"🔍 Pre-Flight Quality Diagnostics (Grade: {quality_report.quality_grade})", expanded=not quality_report.passed):
         q_c1, q_c2, q_c3, q_c4 = st.columns(4)
         q_c1.metric("Sharpness (Blur)", f"{quality_report.blur_score:.1f}", 
                     delta="Sharp" if not quality_report.is_blurry else "Blurry Alert",
@@ -1048,10 +1049,10 @@ try:
         if quality_report.issues:
             st.markdown("**Identified Quality Factors:**")
             for issue, rec in zip(quality_report.issues, quality_report.recommendations):
-                st.markdown(f"- âš ï¸ **{issue}**: {rec}")
+                st.markdown(f"- ⚠️ **{issue}**: {rec}")
 
     if risk["incomplete"]:
-        st.caption(f"â„¹ï¸ Non-fatal: Excluded uncomputed checks from weight: {', '.join(risk['incomplete'])}")
+        st.caption(f"ℹ️ Non-fatal: Excluded uncomputed checks from weight: {', '.join(risk['incomplete'])}")
 
     # -- Three Inspection Modules Grid --------------------------------------
     col1, col2, col3 = st.columns(3)
@@ -1071,26 +1072,26 @@ try:
                 f"""
                 <div class="slate-card">
                     <div class="card-title">
-                        <span>ðŸ›‚ Visa Field Extraction</span>
+                        <span>🛂 Visa Field Extraction</span>
                         {v_status_badge}
                     </div>
                 """,
                 unsafe_allow_html=True,
             )
             if visa_result.status == "UNREADABLE":
-                st.error("âŒ Could not extract visa fields from this image.")
+                st.error("❌ Could not extract visa fields from this image.")
                 st.caption(visa_result.confidence_note)
             else:
                 visa_fields = [
-                    ("Visa Number",      visa_result.visa_number or "â€”",    None),
-                    ("Visa Type",        visa_result.visa_type or "â€”",      None),
-                    ("Country of Issue", visa_result.country_of_issue or "â€”", None),
-                    ("Valid From",       visa_result.valid_from or "â€”",     None),
-                    ("Valid Until",      visa_result.valid_until or "â€”",    None),
-                    ("No. of Entries",   visa_result.entries or "â€”",        None),
-                    ("Stay Duration",    visa_result.stay_duration or "â€”",  None),
-                    ("Applicant Name",   visa_result.applicant_name or "â€”", None),
-                    ("Nationality",      visa_result.nationality or "â€”",    None),
+                    ("Visa Number",      visa_result.visa_number or "—",    None),
+                    ("Visa Type",        visa_result.visa_type or "—",      None),
+                    ("Country of Issue", visa_result.country_of_issue or "—", None),
+                    ("Valid From",       visa_result.valid_from or "—",     None),
+                    ("Valid Until",      visa_result.valid_until or "—",    None),
+                    ("No. of Entries",   visa_result.entries or "—",        None),
+                    ("Stay Duration",    visa_result.stay_duration or "—",  None),
+                    ("Applicant Name",   visa_result.applicant_name or "—", None),
+                    ("Nationality",      visa_result.nationality or "—",    None),
                 ]
                 rows_html = "".join([render_field_row(l, v, b) for l, v, b in visa_fields])
                 st.markdown(rows_html, unsafe_allow_html=True)
@@ -1110,29 +1111,29 @@ try:
                 f"""
                 <div class="slate-card">
                     <div class="card-title">
-                        <span>ðŸªª {id_result.doc_subtype} Field Extraction</span>
+                        <span>🪪 {id_result.doc_subtype} Field Extraction</span>
                         {id_status_badge}
                     </div>
                 """,
                 unsafe_allow_html=True,
             )
             if id_result.status == "UNREADABLE":
-                st.error("âŒ Could not extract ID fields from this image.")
+                st.error("❌ Could not extract ID fields from this image.")
                 st.caption(id_result.confidence_note)
             else:
                 id_fields = [
                     ("Document Subtype",    id_result.doc_subtype,              None),
-                    ("ID / Licence No.",    id_result.id_number or "â€”",         None),
-                    ("Full Name",           id_result.full_name or "â€”",         None),
-                    ("Date of Birth",       id_result.date_of_birth or "â€”",     None),
-                    ("Gender",              id_result.gender or "â€”",            None),
-                    ("Blood Group",         id_result.blood_group or "â€”",       None),
-                    ("Issue Date",          id_result.issue_date or "â€”",        None),
-                    ("Expiry Date",         id_result.expiry_date or "â€”",       None),
-                    ("Issuing Authority",   id_result.issuing_authority or "â€”", None),
-                    ("Nationality",         id_result.nationality or "â€”",       None),
-                    ("Guardian / Relation", id_result.relation_name or "â€”",     None),
-                    ("Address",             id_result.address or "â€”",           None),
+                    ("ID / Licence No.",    id_result.id_number or "—",         None),
+                    ("Full Name",           id_result.full_name or "—",         None),
+                    ("Date of Birth",       id_result.date_of_birth or "—",     None),
+                    ("Gender",              id_result.gender or "—",            None),
+                    ("Blood Group",         id_result.blood_group or "—",       None),
+                    ("Issue Date",          id_result.issue_date or "—",        None),
+                    ("Expiry Date",         id_result.expiry_date or "—",       None),
+                    ("Issuing Authority",   id_result.issuing_authority or "—", None),
+                    ("Nationality",         id_result.nationality or "—",       None),
+                    ("Guardian / Relation", id_result.relation_name or "—",     None),
+                    ("Address",             id_result.address or "—",           None),
                 ]
                 rows_html = "".join([render_field_row(l, v, b) for l, v, b in id_fields])
                 st.markdown(rows_html, unsafe_allow_html=True)
@@ -1147,7 +1148,7 @@ try:
                 f"""
                 <div class="slate-card">
                     <div class="card-title">
-                        <span>ðŸ“‹ ICAO {getattr(mrz_result, 'mrz_format', 'TD3')} MRZ</span>
+                        <span>📋 ICAO {getattr(mrz_result, 'mrz_format', 'TD3')} MRZ</span>
                         {render_badge('PASSED', 'pass') if mrz_result.all_checks_passed else render_badge('CHECKSUM FAIL', 'fail')}
                     </div>
                 """,
@@ -1157,27 +1158,27 @@ try:
             if mrz_result.status == "MRZ_UNREADABLE":
                 exp_text = " ".join(mrz_result.failed_explanations).lower() if mrz_result.failed_explanations else ""
                 if quality_report.is_blurry:
-                    st.error("âŒ MRZ Unreadable â€” Image Too Blurry")
+                    st.error("❌ MRZ Unreadable — Image Too Blurry")
                     st.markdown("- **Fix:** Hold the camera steady and ensure the document is flat.")
                 elif quality_report.has_glare:
-                    st.error("âŒ MRZ Unreadable â€” Glare / Overexposure Detected")
+                    st.error("❌ MRZ Unreadable — Glare / Overexposure Detected")
                     st.markdown("- **Fix:** Tilt the document slightly or diffuse the light source.")
                 elif quality_report.is_underexposed:
-                    st.error("âŒ MRZ Unreadable â€” Low Light / Underexposed")
+                    st.error("❌ MRZ Unreadable — Low Light / Underexposed")
                     st.markdown("- **Fix:** Move to a brighter environment before rescanning.")
                 elif "length" in exp_text or "44" in exp_text:
-                    st.error("âŒ MRZ Unreadable â€” Could Not Find Two 44-Character MRZ Lines")
+                    st.error("❌ MRZ Unreadable — Could Not Find Two 44-Character MRZ Lines")
                     st.markdown(
                         "- The document bottom edge may be cropped. Try adjusting the **Orientation** slider."
                     )
                 elif "applicable" in exp_text:
-                    st.info("â„¹ï¸ MRZ validation is only applicable to Passport documents.")
+                    st.info("ℹ️ MRZ validation is only applicable to Passport documents.")
                 else:
-                    st.error("âŒ MRZ Unreadable â€” Non-Standard or Malformed MRZ")
+                    st.error("❌ MRZ Unreadable — Non-Standard or Malformed MRZ")
                 if mrz_result.failed_explanations and "applicable" not in exp_text:
-                    with st.expander("ðŸ” Technical Detail", expanded=False):
+                    with st.expander("🔍 Technical Detail", expanded=False):
                         for exp in mrz_result.failed_explanations:
-                            st.caption(f"â€¢ {exp}")
+                            st.caption(f"• {exp}")
             else:
                 from mrz_engine import lookup_country
                 fields = [
@@ -1195,7 +1196,7 @@ try:
                     ("Document No.",    mrz_result.document_number,
                      render_badge("PASS" if (mrz_result.document_number_check and mrz_result.document_number_check.passed) else "FAIL",
                                   "pass" if (mrz_result.document_number_check and mrz_result.document_number_check.passed) else "fail")),
-                    ("Composite Check", "â€”",
+                    ("Composite Check", "—",
                      render_badge("PASS" if (mrz_result.composite_check and mrz_result.composite_check.passed) else "FAIL",
                                   "pass" if (mrz_result.composite_check and mrz_result.composite_check.passed) else "fail")),
                 ]
@@ -1215,7 +1216,7 @@ try:
             f"""
             <div class="slate-card">
                 <div class="card-title">
-                    <span>ðŸ”¬ Error Level Analysis</span>
+                    <span>🔬 Error Level Analysis</span>
                     {ela_badge}
                 </div>
             """,
@@ -1241,7 +1242,7 @@ try:
             )
 
             if ela_result.get("caveat"):
-                st.caption(f"â„¹ï¸ {ela_result['caveat']}")
+                st.caption(f"ℹ️ {ela_result['caveat']}")
 
             sub_img1, sub_img2 = st.columns(2)
             with sub_img1:
@@ -1268,7 +1269,7 @@ try:
             f"""
             <div class="slate-card">
                 <div class="card-title">
-                    <span>ðŸ§¬ Face Verification</span>
+                    <span>🧬 Face Verification</span>
                     {bio_badge}
                 </div>
             """,
@@ -1278,7 +1279,7 @@ try:
         if bio_status == "MODULE_UNAVAILABLE":
             st.caption("Biometric engine unavailable in current environment.")
         elif bio_status in ("NO_FACE_PASSPORT", "NO_FACE_LIVE", "MULTIPLE_FACES"):
-            st.caption(f"âš ï¸ {bio_result.get('message')}")
+            st.caption(f"⚠️ {bio_result.get('message')}")
         elif bio_status == "ERROR":
             st.caption(f"Verification error: {bio_result.get('message')}")
         else:
@@ -1327,25 +1328,25 @@ try:
         # Plain-English explanations for each check
         check_explanations = {
             "MRZ Checksum":       "Mathematical checksum validation of the Machine Readable Zone (passport only).",
-            "ELA Intensity":      "Digital forgery detection via Error Level Analysis â€” checks for pixel-level editing.",
+            "ELA Intensity":      "Digital forgery detection via Error Level Analysis — checks for pixel-level editing.",
             "Biometric Distance": "ArcFace AI face match between document photo and live/uploaded traveller photo.",
             "Text Consistency":   "Fuzzy cross-check of printed fields vs. MRZ encoded data (passport only).",
         }
         check_status = {
-            "MRZ Checksum":       "âœ… All ICAO check digits verified" if mrz_passed_val else ("âž– Not applicable for this document type" if mrz_passed_val is None else "âŒ One or more check digits failed"),
-            "ELA Intensity":      f"âœ… Normal compression artifact level ({ela_error_val:.1f})" if ela_error_val is not None and not ela_result.get("alert") else ("âš ï¸ Elevated artifacts detected" if ela_result.get("alert") else "âž– ELA not available"),
-            "Biometric Distance": f"âœ… Face match (distance {bio_dist_val:.3f})" if bio_dist_val is not None and bio_result.get("passed") else (f"âŒ Face mismatch (distance {bio_dist_val:.3f})" if bio_dist_val is not None else "âž– No live photo provided"),
-            "Text Consistency":   f"âœ… Fields consistent ({text_ratio_val:.0f}% match)" if text_ratio_val is not None and text_ratio_val >= 70 else (f"âš ï¸ Low field match ({text_ratio_val:.0f}%)" if text_ratio_val is not None else "âž– Not applicable for this document type"),
+            "MRZ Checksum":       "✅ All ICAO check digits verified" if mrz_passed_val else ("➖ Not applicable for this document type" if mrz_passed_val is None else "❌ One or more check digits failed"),
+            "ELA Intensity":      f"✅ Normal compression artifact level ({ela_error_val:.1f})" if ela_error_val is not None and not ela_result.get("alert") else ("⚠️ Elevated artifacts detected" if ela_result.get("alert") else "➖ ELA not available"),
+            "Biometric Distance": f"✅ Face match (distance {bio_dist_val:.3f})" if bio_dist_val is not None and bio_result.get("passed") else (f"❌ Face mismatch (distance {bio_dist_val:.3f})" if bio_dist_val is not None else "➖ No live photo provided"),
+            "Text Consistency":   f"✅ Fields consistent ({text_ratio_val:.0f}% match)" if text_ratio_val is not None and text_ratio_val >= 70 else (f"⚠️ Low field match ({text_ratio_val:.0f}%)" if text_ratio_val is not None else "➖ Not applicable for this document type"),
         }
 
         rows = []
         for name, score in risk["sub_scores"].items():
             w_pct = risk["sub_weights_used"].get(name, 0) * 100
             contrib = score * risk["sub_weights_used"].get(name, 0)
-            flag = "ðŸ”´ High" if score >= 60 else ("ðŸŸ¡ Moderate" if score >= 30 else "ðŸŸ¢ Low")
+            flag = "🔴 High" if score >= 60 else ("🟡 Moderate" if score >= 30 else "🟢 Low")
             rows.append({
                 "Check": name,
-                "Status": check_status.get(name, "â€”"),
+                "Status": check_status.get(name, "—"),
                 "Risk Level": flag,
                 "Risk Score": f"{score:.0f}/100",
                 "Weight": f"{w_pct:.0f}%",
@@ -1355,8 +1356,8 @@ try:
             na_reason = "Not applicable for this document type" if name in ["MRZ Checksum", "Text Consistency"] and doc_type != "Passport" else "Check was unavailable or skipped"
             rows.append({
                 "Check": name,
-                "Status": f"âž– {na_reason}",
-                "Risk Level": "âž– N/A",
+                "Status": f"➖ {na_reason}",
+                "Risk Level": "➖ N/A",
                 "Risk Score": "N/A",
                 "Weight": "0% (excluded)",
                 "Contribution": "0.0",
@@ -1367,12 +1368,12 @@ try:
         # Show what's driving the risk if high
         high_checks = [(n, s) for n, s in risk.get("sub_scores", {}).items() if s >= 60]
         if high_checks:
-            st.markdown("##### âš ï¸ Risk Factors Detected")
+            st.markdown("##### ⚠️ Risk Factors Detected")
             for name, score in sorted(high_checks, key=lambda x: -x[1]):
-                st.warning(f"**{name}** â€” {check_explanations.get(name, '')}  \nRisk contribution: **{score:.0f}/100**. {check_status.get(name, '')}")
+                st.warning(f"**{name}** — {check_explanations.get(name, '')}  \nRisk contribution: **{score:.0f}/100**. {check_status.get(name, '')}")
 
         if doc_type != "Passport":
-            st.info("â„¹ï¸ **Note:** MRZ Checksum and Text Consistency checks are only applicable to Passports. For Aadhaar / Driving Licences / Visas, the risk score is based on **ELA Forensics** and **Face Verification** only.")
+            st.info("ℹ️ **Note:** MRZ Checksum and Text Consistency checks are only applicable to Passports. For Aadhaar / Driving Licences / Visas, the risk score is based on **ELA Forensics** and **Face Verification** only.")
 
     # -----------------------------------------------------------------------
     # F10: Evidence Report Export
@@ -1380,7 +1381,7 @@ try:
     st.divider()
     _report_col1, _report_col2 = st.columns([2, 1])
     with _report_col1:
-        st.markdown("**ðŸ“„ Evidence Report** â€” Export a structured inspection record for this session.")
+        st.markdown("**📄 Evidence Report** — Export a structured inspection record for this session.")
     with _report_col2:
         try:
             from report_builder import build_evidence_report
@@ -1401,7 +1402,7 @@ try:
                 visa_result=visa_result,
             )
             st.download_button(
-                label="â¬‡ï¸ Download Report (.md)",
+                label="⬇️ Download Report (.md)",
                 data=_report_md.encode("utf-8"),
                 file_name=f"pixelproof_report_{doc_sha256[:8]}.md",
                 mime="text/markdown",
@@ -1416,7 +1417,7 @@ try:
     st.markdown(
         """
         <p style="color:#64748b;font-size:0.78rem;text-align:center;">
-        PixelProof â€” Hackathon Educational Prototype &nbsp;|&nbsp;
+        PixelProof — Hackathon Educational Prototype &nbsp;|&nbsp;
         Not validated for real border or immigration use &nbsp;|&nbsp;
         ELA and MRZ checks are heuristic indicators, not proof of forgery or authenticity.
         </p>

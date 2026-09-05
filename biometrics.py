@@ -48,8 +48,8 @@ logger = logging.getLogger(__name__)
 ARCFACE_COSINE_THRESHOLD: float = 0.68
 
 # Explicit detector backend for consistent alignment.
-# Options: "retinaface", "mtcnn", "opencv", "ssd", "mediapipe"
-DETECTOR_BACKEND: str = "retinaface"
+# Use "opencv" for lightweight in-memory detection (prevents container OOM)
+DETECTOR_BACKEND: str = "opencv"
 
 
 @dataclass
@@ -233,7 +233,7 @@ def count_faces(image_array: np.ndarray) -> int:
         faces = df.extract_faces(
             img_path=tmp_path,
             detector_backend=DETECTOR_BACKEND,
-            enforce_detection=True,
+            enforce_detection=False,
         )
         return len(faces)
     except Exception as exc:
@@ -338,7 +338,7 @@ def verify_faces(
             model_name="ArcFace",
             detector_backend=DETECTOR_BACKEND,
             distance_metric="cosine",
-            enforce_detection=True,
+            enforce_detection=False,
         )
 
         distance = float(verification.get("distance", 1.0))

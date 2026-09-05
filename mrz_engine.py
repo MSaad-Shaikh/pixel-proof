@@ -206,6 +206,23 @@ def _validate_field(value: str, check_char: str, label: str) -> FieldResult:
     )
 
 
+def _clean_numeric(s: str) -> str:
+    """Map common OCR-B character misreads to digits for numeric MRZ fields."""
+    ocr_map = {
+        'O': '0', 'Q': '0', 'D': '0', 'U': '0',
+        'I': '1', 'L': '1', 'l': '1', '|': '1', '!': '1',
+        'Z': '2',
+        'E': '3',
+        'A': '4', 'H': '4', 'G': '4',
+        'S': '5', 's': '5',
+        'b': '6',
+        'T': '7', 'Y': '7',
+        'B': '8',
+        'g': '9', 'q': '9',
+    }
+    return "".join(ocr_map.get(ch, ch) for ch in s)
+
+
 def _extract_td3_fields(line1: str, line2: str) -> dict:
     """Extract raw field substrings from the two TD3 MRZ lines.
 
@@ -232,36 +249,44 @@ def _extract_td3_fields(line1: str, line2: str) -> dict:
       doc_number(9) + cd_doc(1) + dob(6) + cd_dob(1) + expiry(6)
       + cd_expiry(1) + personal(14) + cd_personal(1)
       NOTE: Nationality and sex are intentionally excluded from composite.
-
-    Args:
-        line1: First MRZ line, exactly 44 characters.
-        line2: Second MRZ line, exactly 44 characters.
-
-    Returns:
-        Dict of named raw field strings.
     """
+    raw_doc_type = line1[0:2]
+    if raw_doc_type.startswith("P") or raw_doc_type in ["AK", "PK", "IP", "LK", "DK"]:
+        clean_doc_type = "P"
+    else:
+        clean_doc_type = raw_doc_type.replace("<", "")
+
+    clean_dob = _clean_numeric(line2[13:19])
+    clean_cd_dob = _clean_numeric(line2[19])
+    clean_expiry = _clean_numeric(line2[21:27])
+    clean_cd_expiry = _clean_numeric(line2[27])
+    clean_cd_doc = _clean_numeric(line2[9])
+    clean_cd_personal = _clean_numeric(line2[42])
+    clean_composite_cd = _clean_numeric(line2[43])
+
+    composite_body = (
+        line2[0:9] + clean_cd_doc
+        + clean_dob + clean_cd_dob
+        + clean_expiry + clean_cd_expiry
+        + line2[28:42] + clean_cd_personal
+    )
+
     return {
-        "doc_type":        line1[0:2],
+        "doc_type":        clean_doc_type,
         "issuing_state":   line1[2:5],
         "primary_id":      line1[5:44],
         "document_number": line2[0:9],
-        "cd_doc":          line2[9],
+        "cd_doc":          clean_cd_doc,
         "nationality":     line2[10:13],
-        "dob":             line2[13:19],
-        "cd_dob":          line2[19],
+        "dob":             clean_dob,
+        "cd_dob":          clean_cd_dob,
         "sex":             line2[20],
-        "expiry":          line2[21:27],
-        "cd_expiry":       line2[27],
+        "expiry":          clean_expiry,
+        "cd_expiry":       clean_cd_expiry,
         "personal_body":   line2[28:42],
-        "cd_personal":     line2[42],
-        "composite_cd":    line2[43],
-        # Composite body = 39 chars (excludes nationality and sex)
-        "composite_body":  (
-            line2[0:10]    # doc_number(9) + cd_doc(1)
-            + line2[13:20]  # dob(6) + cd_dob(1)
-            + line2[21:28]  # expiry(6) + cd_expiry(1)
-            + line2[28:43]  # personal_body(14) + cd_personal(1)
-        ),
+        "cd_personal":     clean_cd_personal,
+        "composite_cd":    clean_composite_cd,
+        "composite_body":  composite_body,
     }
 
 
@@ -661,23 +686,29 @@ def parse_and_validate(ocr_text: str) -> MRZResult:
         )
 
 
-def format_date(yymmdd: str) -> str:
+def format_date(yymmdd: str, is_expiry: bool = False) -> str:
     """Convert a YYMMDD date string to a human-readable format.
 
-    Applies the ICAO convention: years 00-30 -> 2000-2030;
-    years 31-99 -> 1931-1999.
+    Handles modern 10-year passports:
+      - Expiry dates: years <= 80 map to 2000-2080 (e.g. 36 -> 2036).
+      - Birth dates:  years <= 35 map to 2000-2035; years > 35 map to 1936-1999.
 
     Args:
-        yymmdd: Six-character date string in YYMMDD format.
+        yymmdd:    Six-character date string in YYMMDD format.
+        is_expiry: Set to True when formatting an expiration date.
 
     Returns:
-        Human-readable date string, or the raw value if parsing fails.
+        Human-readable date string (e.g. '28 Jun 2036'), or raw value on error.
     """
     try:
-        yy = int(yymmdd[0:2])
-        mm = int(yymmdd[2:4])
-        dd = int(yymmdd[4:6])
-        year = 2000 + yy if yy <= 30 else 1900 + yy
+        cleaned = _clean_numeric(yymmdd) if any(c.isalpha() for c in yymmdd) else yymmdd
+        yy = int(cleaned[0:2])
+        mm = int(cleaned[2:4])
+        dd = int(cleaned[4:6])
+        if is_expiry:
+            year = 2000 + yy if yy <= 80 else 1900 + yy
+        else:
+            year = 2000 + yy if yy <= 35 else 1900 + yy
         return datetime(year, mm, dd).strftime("%d %b %Y")
     except (ValueError, IndexError):
         return yymmdd

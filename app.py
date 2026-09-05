@@ -1157,7 +1157,7 @@ try:
                     ("Date of Birth",   format_date(mrz_result.date_of_birth),
                      render_badge("PASS" if (mrz_result.dob_check and mrz_result.dob_check.passed) else "FAIL",
                                   "pass" if (mrz_result.dob_check and mrz_result.dob_check.passed) else "fail")),
-                    ("Expiry Date",     format_date(mrz_result.expiration_date),
+                    ("Expiry Date",     format_date(mrz_result.expiration_date, is_expiry=True),
                      render_badge("PASS" if (mrz_result.expiry_check and mrz_result.expiry_check.passed) else "FAIL",
                                   "pass" if (mrz_result.expiry_check and mrz_result.expiry_check.passed) else "fail")),
                     ("Document No.",    mrz_result.document_number,

@@ -470,7 +470,7 @@ if not st.session_state.get("authenticated", False):
         with st.form("login_form"):
             username = st.text_input("Officer Username / ID", placeholder="e.g. officer_demo")
             password = st.text_input("Passcode", type="password", placeholder="Enter passcode")
-            submit_btn = st.form_submit_button("Log In to Workstation", type="primary", width='stretch')
+            submit_btn = st.form_submit_button("Log In to Workstation", type="primary", use_container_width=True)
             
             if submit_btn:
                 if username in DEMO_CREDENTIALS and DEMO_CREDENTIALS[username] == password:
@@ -494,7 +494,7 @@ if not st.session_state.get("authenticated", False):
             unsafe_allow_html=True,
         )
         
-        if st.button("âš¡ 1-Click Demo Login (Instant Access)", width='stretch'):
+        if st.button("âš¡ 1-Click Demo Login (Instant Access)", use_container_width=True):
             st.session_state["authenticated"] = True
             st.session_state["user"] = "officer_demo"
             st.rerun()
@@ -514,7 +514,7 @@ with st.sidebar:
     with c_user:
         st.caption(f"ðŸ‘¤ `{st.session_state.get('user', 'officer_demo')}`")
     with c_out:
-        if st.button("Log Out", key="logout_btn", width='stretch'):
+        if st.button("Log Out", key="logout_btn", use_container_width=True):
             st.session_state["authenticated"] = False
             st.session_state.pop("user", None)
             st.rerun()
@@ -575,7 +575,7 @@ with st.sidebar:
         )
 
     st.markdown("---")
-    run_btn = st.button("Run Document Verification", type="primary", width='stretch')
+    run_btn = st.button("Run Document Verification", type="primary", use_container_width=True)
 
 # Pre-warm deepface in background
 deepface_ok = warmup_deepface()
@@ -1245,11 +1245,11 @@ try:
 
             sub_img1, sub_img2 = st.columns(2)
             with sub_img1:
-                st.image(doc_pil, caption="Original Doc", width='stretch')
+                st.image(doc_pil, caption="Original Doc", use_container_width=True)
             with sub_img2:
                 heatmap_bgr = ela_result.get("heatmap_bgr")
                 if heatmap_bgr is not None:
-                    st.image(heatmap_to_rgb(heatmap_bgr), caption="ELA Heatmap", width='stretch')
+                    st.image(heatmap_to_rgb(heatmap_bgr), caption="ELA Heatmap", use_container_width=True)
                 else:
                     st.caption("Heatmap unavailable")
 
@@ -1305,16 +1305,16 @@ try:
             img_b1, img_b2 = st.columns(2)
             with img_b1:
                 if passport_photo_crop is not None:
-                    st.image(passport_photo_crop, caption="Passport Portrait (Auto-Cropped)", width='stretch')
+                    st.image(passport_photo_crop, caption="Passport Portrait (Auto-Cropped)", use_container_width=True)
                 else:
-                    st.image(doc_pil, caption="Passport Document", width='stretch')
+                    st.image(doc_pil, caption="Passport Document", use_container_width=True)
 
             with img_b2:
                 try:
                     annotated_l = draw_bbox_on_image(live_np, l_box, color_rgb=(52, 211, 153))
-                    st.image(annotated_l, caption="Live Photo (Face Tracked)", width='stretch')
+                    st.image(annotated_l, caption="Live Photo (Face Tracked)", use_container_width=True)
                 except Exception:
-                    st.image(live_pil, caption="Live Photo", width='stretch')
+                    st.image(live_pil, caption="Live Photo", use_container_width=True)
 
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -1362,7 +1362,7 @@ try:
                 "Contribution": "0.0",
             })
         if rows:
-            st.dataframe(pd.DataFrame(rows), width='stretch', hide_index=True)
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
         # Show what's driving the risk if high
         high_checks = [(n, s) for n, s in risk.get("sub_scores", {}).items() if s >= 60]
@@ -1405,7 +1405,7 @@ try:
                 data=_report_md.encode("utf-8"),
                 file_name=f"pixelproof_report_{doc_sha256[:8]}.md",
                 mime="text/markdown",
-                width='stretch',
+                use_container_width=True,
             )
         except Exception as _rep_exc:
             st.caption(f"Report generation unavailable: {_rep_exc}")

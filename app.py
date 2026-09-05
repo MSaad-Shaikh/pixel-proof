@@ -908,11 +908,17 @@ try:
     # -----------------------------------------------------------------------
     from risk_engine import compute_risk_score
 
-    # SECURITY FIX: An unreadable or invalid MRZ is a security failure (100% risk contribution on MRZ)
-    mrz_passed_val = True if mrz_result.status == "OK" else False
+    # For Passports: MRZ fail = security failure. For Aadhaar/DL/Visa: MRZ is
+    # not applicable — pass None so the weight is redistributed across other checks.
+    if doc_type == "Passport":
+        mrz_passed_val = True if mrz_result.status == "OK" else False
+    else:
+        mrz_passed_val = None  # Not applicable — no MRZ strip on these documents
+
     ela_error_val = ela_result.get("mean_error") if not ela_result.get("error") else None
     bio_dist_val = bio_result.get("distance")
-    text_ratio_val = text_consistency.get("overall_ratio") if text_consistency.get("available") else None
+    # Text consistency against MRZ only makes sense for passports
+    text_ratio_val = text_consistency.get("overall_ratio") if (doc_type == "Passport" and text_consistency.get("available")) else None
 
     try:
         risk = compute_risk_score(
@@ -1289,41 +1295,58 @@ try:
     # -----------------------------------------------------------------------
     # Risk Breakdown & Text Consistency Tabular Area
     # -----------------------------------------------------------------------
-    with st.expander("Detailed Risk Component Breakdown", expanded=False):
+    with st.expander("Detailed Risk Component Breakdown", expanded=(risk.get("score_int", 0) >= 60)):
         import pandas as pd
+
+        # Plain-English explanations for each check
+        check_explanations = {
+            "MRZ Checksum":       "Mathematical checksum validation of the Machine Readable Zone (passport only).",
+            "ELA Intensity":      "Digital forgery detection via Error Level Analysis — checks for pixel-level editing.",
+            "Biometric Distance": "ArcFace AI face match between document photo and live/uploaded traveller photo.",
+            "Text Consistency":   "Fuzzy cross-check of printed fields vs. MRZ encoded data (passport only).",
+        }
+        check_status = {
+            "MRZ Checksum":       "✅ All ICAO check digits verified" if mrz_passed_val else ("➖ Not applicable for this document type" if mrz_passed_val is None else "❌ One or more check digits failed"),
+            "ELA Intensity":      f"✅ Normal compression artifact level ({ela_error_val:.1f})" if ela_error_val is not None and not ela_result.get("alert") else ("⚠️ Elevated artifacts detected" if ela_result.get("alert") else "➖ ELA not available"),
+            "Biometric Distance": f"✅ Face match (distance {bio_dist_val:.3f})" if bio_dist_val is not None and bio_result.get("passed") else (f"❌ Face mismatch (distance {bio_dist_val:.3f})" if bio_dist_val is not None else "➖ No live photo provided"),
+            "Text Consistency":   f"✅ Fields consistent ({text_ratio_val:.0f}% match)" if text_ratio_val is not None and text_ratio_val >= 70 else (f"⚠️ Low field match ({text_ratio_val:.0f}%)" if text_ratio_val is not None else "➖ Not applicable for this document type"),
+        }
+
         rows = []
         for name, score in risk["sub_scores"].items():
             w_pct = risk["sub_weights_used"].get(name, 0) * 100
             contrib = score * risk["sub_weights_used"].get(name, 0)
+            flag = "🔴 High" if score >= 60 else ("🟡 Moderate" if score >= 30 else "🟢 Low")
             rows.append({
-                "Evaluation Check": name,
-                "Raw Risk (0-100)": f"{score:.1f}",
-                "Effective Weight": f"{w_pct:.0f}%",
-                "Weighted Contribution": f"{contrib:.1f}",
+                "Check": name,
+                "Status": check_status.get(name, "—"),
+                "Risk Level": flag,
+                "Risk Score": f"{score:.0f}/100",
+                "Weight": f"{w_pct:.0f}%",
+                "Contribution": f"+{contrib:.1f}",
             })
         for name in risk["incomplete"]:
+            na_reason = "Not applicable for this document type" if name in ["MRZ Checksum", "Text Consistency"] and doc_type != "Passport" else "Check was unavailable or skipped"
             rows.append({
-                "Evaluation Check": name,
-                "Raw Risk (0-100)": "N/A",
-                "Effective Weight": "0% (INCOMPLETE)",
-                "Weighted Contribution": "0.0",
+                "Check": name,
+                "Status": f"➖ {na_reason}",
+                "Risk Level": "➖ N/A",
+                "Risk Score": "N/A",
+                "Weight": "0% (excluded)",
+                "Contribution": "0.0",
             })
         if rows:
             st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
-        if text_consistency.get("available"):
-            st.markdown("##### Visible Inspection Zone (VIZ) Cross-Check")
-            fa = text_consistency.get("fields_available", {})
-            c1, c2, c3 = st.columns(3)
-            nr = text_consistency.get("name_ratio")
-            dr = text_consistency.get("dob_ratio")
-            dcr = text_consistency.get("doc_ratio")
-            c1.metric("Name Match", f"{nr:.0f}%" if nr is not None else "N/A",
-                      delta=None if nr is None else ("Found" if fa.get("name") else "Not Found"))
-            c2.metric("DOB Match", f"{dr:.0f}%" if dr is not None else "N/A",
-                      delta=None if dr is None else ("Found" if fa.get("dob") else "Not Found"))
-            c3.metric("Document No. Match", f"{dcr:.0f}%" if dcr is not None else "N/A",
-                      delta=None if dcr is None else ("Found" if fa.get("doc_number") else "Not Found"))
+        # Show what's driving the risk if high
+        high_checks = [(n, s) for n, s in risk.get("sub_scores", {}).items() if s >= 60]
+        if high_checks:
+            st.markdown("##### ⚠️ Risk Factors Detected")
+            for name, score in sorted(high_checks, key=lambda x: -x[1]):
+                st.warning(f"**{name}** — {check_explanations.get(name, '')}  \nRisk contribution: **{score:.0f}/100**. {check_status.get(name, '')}")
+
+        if doc_type != "Passport":
+            st.info("ℹ️ **Note:** MRZ Checksum and Text Consistency checks are only applicable to Passports. For Aadhaar / Driving Licences / Visas, the risk score is based on **ELA Forensics** and **Face Verification** only.")
 
     # -----------------------------------------------------------------------
     # F10: Evidence Report Export

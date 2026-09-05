@@ -25,11 +25,26 @@ class IDResult:
     confidence_note: str = ""
 
 
-def _ocr_image(image_path: str) -> list:
+_ID_SHARED_READER = None
+
+
+def _get_id_reader():
+    global _ID_SHARED_READER
+    if _ID_SHARED_READER is None:
+        try:
+            import easyocr
+            _ID_SHARED_READER = easyocr.Reader(["en"], gpu=False, verbose=False)
+        except Exception as exc:
+            logger.error("EasyOCR initialization error in id_engine: %s", exc)
+    return _ID_SHARED_READER
+
+
+def _ocr_image(image_path: str, reader=None) -> list:
     try:
-        import easyocr
-        reader = easyocr.Reader(["en"], gpu=False, verbose=False)
-        results = reader.readtext(image_path, detail=0, paragraph=False)
+        r = reader if reader is not None else _get_id_reader()
+        if r is None:
+            return []
+        results = r.readtext(image_path, detail=0, paragraph=False)
         return results
     except Exception as exc:
         logger.error("EasyOCR error in id_engine: %s", exc)
@@ -304,9 +319,9 @@ def _extract_all_fields(lines: list) -> IDResult:
     return result
 
 
-def extract_id_fields(image_path: str) -> IDResult:
+def extract_id_fields(image_path: str, reader=None) -> IDResult:
     """Run EasyOCR on the ID/licence image and extract all structured fields."""
-    lines = _ocr_image(image_path)
+    lines = _ocr_image(image_path, reader=reader)
     if not lines:
         return IDResult(status="UNREADABLE", confidence_note="EasyOCR returned no text from this image.")
     lines = [l.strip() for l in lines if l.strip()]

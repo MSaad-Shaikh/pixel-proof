@@ -823,7 +823,8 @@ try:
         with st.spinner("Extracting visa fields (EasyOCR)…"):
             from visa_engine import extract_visa_fields
             try:
-                visa_result = extract_visa_fields(doc_proc_temp)
+                reader = get_easy_ocr_reader()
+                visa_result = extract_visa_fields(doc_proc_temp, reader=reader)
             except Exception as exc:
                 logger.error("Visa engine error: %s", exc)
                 from visa_engine import VisaResult
@@ -838,7 +839,8 @@ try:
         with st.spinner("Extracting ID fields (EasyOCR)…"):
             from id_engine import extract_id_fields
             try:
-                id_result = extract_id_fields(doc_proc_temp)
+                reader = get_easy_ocr_reader()
+                id_result = extract_id_fields(doc_proc_temp, reader=reader)
             except Exception as exc:
                 logger.error("ID engine error: %s", exc)
                 from id_engine import IDResult
@@ -884,27 +886,32 @@ try:
                 bio_result["status"] = "ERROR"
                 bio_result["message"] = str(exc)
 
+    import gc
+    gc.collect()
+
     # -----------------------------------------------------------------------
-    # Step 4: Text Consistency (VIZ vs MRZ) — use deskewed derivative for OCR
+    # Step 4: Text Consistency (VIZ vs MRZ) — specific to Passports
     # -----------------------------------------------------------------------
-    with st.spinner("Checking text consistency…"):
-        from risk_engine import extract_viz_fields_with_ocr, compute_text_consistency
-        try:
-            viz_fields = extract_viz_fields_with_ocr(doc_proc_temp)
-            text_consistency = compute_text_consistency(
-                viz_fields=viz_fields,
-                mrz_surname=mrz_result.surname,
-                mrz_given=mrz_result.given_names,
-                mrz_dob=mrz_result.date_of_birth,
-                mrz_doc_number=mrz_result.document_number,
-            )
-        except Exception as exc:
-            logger.error("Text consistency error: %s", exc)
-            text_consistency = {
-                "overall_ratio": None, "available": False,
-                "name_ratio": None, "dob_ratio": None, "doc_ratio": None,
-                "fields_available": {"name": False, "dob": False, "doc_number": False},
-            }
+    text_consistency = {
+        "overall_ratio": None, "available": False,
+        "name_ratio": None, "dob_ratio": None, "doc_ratio": None,
+        "fields_available": {"name": False, "dob": False, "doc_number": False},
+    }
+    if doc_type == "Passport":
+        with st.spinner("Checking text consistency…"):
+            from risk_engine import extract_viz_fields_with_ocr, compute_text_consistency
+            try:
+                reader = get_easy_ocr_reader()
+                viz_fields = extract_viz_fields_with_ocr(doc_proc_temp, reader=reader)
+                text_consistency = compute_text_consistency(
+                    viz_fields=viz_fields,
+                    mrz_surname=mrz_result.surname,
+                    mrz_given=mrz_result.given_names,
+                    mrz_dob=mrz_result.date_of_birth,
+                    mrz_doc_number=mrz_result.document_number,
+                )
+            except Exception as exc:
+                logger.error("Text consistency error: %s", exc)
 
     # -----------------------------------------------------------------------
     # Step 5: Composite Risk Score

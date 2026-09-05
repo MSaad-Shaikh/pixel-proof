@@ -31,11 +31,26 @@ class VisaResult:
     confidence_note: str = ""
 
 
-def _ocr_image(image_path: str) -> list:
+_VISA_SHARED_READER = None
+
+
+def _get_visa_reader():
+    global _VISA_SHARED_READER
+    if _VISA_SHARED_READER is None:
+        try:
+            import easyocr
+            _VISA_SHARED_READER = easyocr.Reader(["en"], gpu=False, verbose=False)
+        except Exception as exc:
+            logger.error("EasyOCR initialization error in visa_engine: %s", exc)
+    return _VISA_SHARED_READER
+
+
+def _ocr_image(image_path: str, reader=None) -> list:
     try:
-        import easyocr
-        reader = easyocr.Reader(["en"], gpu=False, verbose=False)
-        results = reader.readtext(image_path, detail=0, paragraph=True)
+        r = reader if reader is not None else _get_visa_reader()
+        if r is None:
+            return []
+        results = r.readtext(image_path, detail=0, paragraph=True)
         return results
     except Exception as exc:
         logger.error("EasyOCR error in visa_engine: %s", exc)
@@ -185,9 +200,9 @@ def _extract_dates(lines: list) -> tuple:
     return valid_from, valid_until
 
 
-def extract_visa_fields(image_path: str) -> VisaResult:
+def extract_visa_fields(image_path: str, reader=None) -> VisaResult:
     """Run EasyOCR on the visa image and extract all structured fields."""
-    lines = _ocr_image(image_path)
+    lines = _ocr_image(image_path, reader=reader)
     if not lines:
         return VisaResult(status="UNREADABLE", confidence_note="EasyOCR returned no text from this image.")
     lines = [l.strip() for l in lines if l.strip()]

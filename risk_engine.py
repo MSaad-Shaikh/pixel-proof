@@ -190,7 +190,7 @@ def _normalize_dob_to_yymmdd(raw: str) -> str:
     return raw
 
 
-def extract_viz_fields_with_ocr(image_path: str) -> dict:
+def extract_viz_fields_with_ocr(image_path: str, reader=None) -> dict:
     """OCR the visible printed (VIZ) fields on a document image.
 
     Attempts to extract name, date-of-birth, and document number from
@@ -208,11 +208,16 @@ def extract_viz_fields_with_ocr(image_path: str) -> dict:
     viz: dict = {"name": None, "dob": None, "doc_number": None}
     all_text: str = ""
 
-    # Primary: EasyOCR (already installed, cached per session in app.py)
+    # Primary: EasyOCR (reuse passed reader or cached instance)
     try:
-        import easyocr
-        reader = easyocr.Reader(["en"], gpu=False, verbose=False)
-        lines = reader.readtext(image_path, detail=0)
+        r = reader
+        if r is None:
+            global _VIZ_SHARED_READER
+            if "_VIZ_SHARED_READER" not in globals() or _VIZ_SHARED_READER is None:
+                import easyocr
+                _VIZ_SHARED_READER = easyocr.Reader(["en"], gpu=False, verbose=False)
+            r = _VIZ_SHARED_READER
+        lines = r.readtext(image_path, detail=0)
         all_text = " ".join(lines).upper()
         logger.info("VIZ OCR: EasyOCR read %d text regions.", len(lines))
     except Exception as exc:
